@@ -1,0 +1,179 @@
+## 📚 核心知识点
+
+### 1. 虚函数
+```cpp
+class Animal {
+public:
+    virtual void speak() {           // 虚函数
+        std::cout << "Animal speaks" << std::endl;
+    }
+    
+    virtual ~Animal() {}             // 虚析构函数（重要！）
+};
+
+class Dog : public Animal {
+public:
+    void speak() override {          // 重写虚函数
+        std::cout << "Dog barks" << std::endl;
+    }
+};
+
+class Cat : public Animal {
+public:
+    void speak() override {
+        std::cout << "Cat meows" << std::endl;
+    }
+};
+
+// 使用多态
+void makeSound(Animal* animal) {
+    animal->speak();  // 运行时根据实际对象类型调用对应函数
+}
+
+Animal* dog = new Dog();
+Animal* cat = new Cat();
+
+makeSound(dog);  // "Dog barks"
+makeSound(cat);  // "Cat meows"
+
+delete dog;
+delete cat;
+```
+
+### 2. 纯虚函数与抽象类
+```cpp
+class Shape {
+public:
+    virtual double getArea() const = 0;   // 纯虚函数
+    virtual double getPerimeter() const = 0;
+    
+    virtual ~Shape() = default;
+    
+    void printInfo() const {              // 非虚函数也可有实现
+        std::cout << "Area: " << getArea() << std::endl;
+    }
+};
+
+// Shape 是抽象类，不能实例化
+// Shape s;  // 错误！
+
+class Rectangle : public Shape {
+public:
+    double getArea() const override { return width * height; }
+    double getPerimeter() const override { return 2 * (width + height); }
+private:
+    double width, height;
+};
+```
+
+### 3. override 和 final（C++11）
+```cpp
+class Base {
+public:
+    virtual void foo();
+    virtual void bar();
+};
+
+class Derived : public Base {
+public:
+    void foo() override;       // 显式声明重写，编译器会检查
+    // void foo(int) override; // 错误！签名不匹配
+    
+    void bar() final;          // 禁止进一步重写
+};
+
+class MoreDerived : public Derived {
+public:
+    // void bar() override;    // 错误！bar 被 final 了
+};
+
+class FinalClass final {};     // 禁止继承
+// class Sub : public FinalClass {};  // 错误！
+```
+
+### 4. 虚函数表（vtable）原理
+```
++-----------+      +------------------+
+| Animal    |      | Animal vtable    |
+| - vptr    |----->| [0] Animal::speak|
++-----------+      | [1] ~Animal      |
+                     +------------------+
+
++-----------+      +------------------+
+| Dog       |      | Dog vtable       |
+| - vptr    |----->| [0] Dog::speak   |
++-----------+      | [1] ~Dog         |
+                     +------------------+
+```
+- 每个含虚函数的类有一个虚函数表
+- 每个对象有一个虚指针（vptr）指向该表
+- 运行时通过 vptr 查找实际调用的函数
+
+### 5. 协变返回类型
+```cpp
+class Animal {
+public:
+    virtual Animal* clone() const {
+        return new Animal(*this);
+    }
+};
+
+class Dog : public Animal {
+public:
+    Dog* clone() const override {  // 返回类型可以是派生类指针
+        return new Dog(*this);
+    }
+};
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <memory>
+
+class Shape {
+public:
+    virtual double getArea() const = 0;
+    virtual ~Shape() = default;
+};
+
+class Circle : public Shape {
+public:
+    Circle(double r) : radius(r) {}
+    double getArea() const override {
+        return 3.14159 * radius * radius;
+    }
+private:
+    double radius;
+};
+
+class Rectangle : public Shape {
+public:
+    Rectangle(double w, double h) : width(w), height(h) {}
+    double getArea() const override {
+        return width * height;
+    }
+private:
+    double width, height;
+};
+
+int main() {
+    // 使用智能指针管理多态对象
+    std::vector<std::unique_ptr<Shape>> shapes;
+    shapes.push_back(std::make_unique<Circle>(5));
+    shapes.push_back(std::make_unique<Rectangle>(4, 6));
+    
+    double total = 0;
+    for (const auto& shape : shapes) {
+        total += shape->getArea();
+    }
+    std::cout << "Total area: " << total << std::endl;
+    
+    return 0;
+}
+```

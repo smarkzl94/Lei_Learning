@@ -1,0 +1,140 @@
+## 📚 核心知识点
+
+### 1. 算法头文件
+```cpp
+#include <algorithm>   // 大多数算法
+#include <numeric>     // 数值算法（accumulate 等）
+```
+
+### 2. 非修改式算法（不修改容器内容）
+
+#### 查找
+```cpp
+std::find(begin, end, value);           // 线性查找
+std::find_if(begin, end, pred);         // 条件查找
+std::binary_search(begin, end, value);  // 二分查找（容器必须有序）
+std::lower_bound(begin, end, value);    // 第一个 >= value 的位置
+std::upper_bound(begin, end, value);    // 第一个 > value 的位置
+
+// 示例
+auto it = std::find(vec.begin(), vec.end(), 42);
+if (it != vec.end()) {
+    std::cout << "Found at index " << std::distance(vec.begin(), it);
+}
+```
+
+#### 计数
+```cpp
+std::count(begin, end, value);          // 统计值出现次数
+std::count_if(begin, end, pred);        // 统计满足条件的个数
+std::all_of(begin, end, pred);          // 是否全部满足
+std::any_of(begin, end, pred);          // 是否有满足
+std::none_of(begin, end, pred);         // 是否全不满足
+```
+
+### 3. 修改式算法
+
+#### 变换
+```cpp
+std::copy(begin1, end1, out_begin);     // 拷贝
+std::copy_if(begin1, end1, out_begin, pred);  // 条件拷贝（C++11）
+
+std::transform(begin1, end1, out_begin, unary_op);           // 一元变换
+std::transform(begin1, end1, begin2, out_begin, binary_op);  // 二元变换
+
+// 示例：将所有元素翻倍
+std::transform(vec.begin(), vec.end(), vec.begin(),
+    [](int x) { return x * 2; });
+```
+
+#### 替换
+```cpp
+std::replace(begin, end, old_val, new_val);      // 替换值
+std::replace_if(begin, end, pred, new_val);      // 条件替换
+std::fill(begin, end, value);                    // 填充
+std::generate(begin, end, gen);                  // 用生成器填充
+```
+
+#### 删除（逻辑删除，需配合 erase）
+```cpp
+// remove-erase 惯用法
+vec.erase(std::remove(vec.begin(), vec.end(), value), vec.end());
+vec.erase(std::remove_if(vec.begin(), vec.end(), pred), vec.end());
+```
+
+### 4. 排序算法
+```cpp
+std::sort(begin, end);                          // 快速排序，O(n log n)
+std::sort(begin, end, cmp);                     // 自定义比较
+std::stable_sort(begin, end);                   // 稳定排序
+std::partial_sort(begin, begin + k, end);       // 前 k 个有序
+std::nth_element(begin, begin + k, end);        // 第 k 小元素到位
+
+std::binary_search(begin, end, value);          // 二分查找
+std::merge(begin1, end1, begin2, end2, out);    // 归并两个有序区间
+```
+
+### 5. 数值算法（<numeric>）
+```cpp
+std::accumulate(begin, end, init);              // 求和
+std::accumulate(begin, end, 1, std::multiplies<int>());  // 求积
+
+std::inner_product(begin1, end1, begin2, init); // 内积
+
+std::partial_sum(begin, end, out);              // 前缀和
+std::adjacent_difference(begin, end, out);      // 相邻差分
+
+// C++17
+std::reduce(begin, end);                        // 并行求和（可能无序）
+std::transform_reduce(begin, end, init, bin_op, un_op);
+```
+
+### 6. 集合算法（容器必须有序）
+```cpp
+std::set_union(a_begin, a_end, b_begin, b_end, out);        // 并集
+std::set_intersection(a_begin, a_end, b_begin, b_end, out); // 交集
+std::set_difference(a_begin, a_end, b_begin, b_end, out);   // 差集
+std::includes(a_begin, a_end, b_begin, b_end);              // 是否包含
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+
+int main() {
+    std::vector<int> nums = {5, 2, 8, 1, 9, 3, 7};
+    
+    // 排序
+    std::sort(nums.begin(), nums.end());
+    
+    // 查找第一个大于 5 的元素
+    auto it = std::upper_bound(nums.begin(), nums.end(), 5);
+    std::cout << "First > 5: " << *it << std::endl;
+    
+    // 求和
+    int sum = std::accumulate(nums.begin(), nums.end(), 0);
+    std::cout << "Sum: " << sum << std::endl;
+    
+    // 统计偶数
+    int even_count = std::count_if(nums.begin(), nums.end(),
+        [](int x) { return x % 2 == 0; });
+    
+    // 删除所有偶数
+    nums.erase(std::remove_if(nums.begin(), nums.end(),
+        [](int x) { return x % 2 == 0; }), nums.end());
+    
+    // 生成平方数
+    std::vector<int> squares(10);
+    int n = 1;
+    std::generate(squares.begin(), squares.end(), [&n]() { return n * n++; });
+    
+    return 0;
+}
+```

@@ -1,0 +1,88 @@
+## 📚 核心知识点
+
+### 1. 基本数据类型
+
+| 类型 | 说明 | 示例 | 典型大小 |
+|------|------|------|----------|
+| `int` | 整数 | `int a = 10;` | 4 字节 |
+| `float` | 单精度浮点 | `float f = 3.14f;` | 4 字节 |
+| `double` | 双精度浮点 | `double d = 3.14159;` | 8 字节 |
+| `char` | 字符 | `char c = 'A';` | 1 字节 |
+| `bool` | 布尔 | `bool flag = true;` | 1 字节 |
+| `void` | 无类型 | 用于函数返回 | - |
+
+### 2. 类型修饰符
+```cpp
+short int si;      // 短整型（通常 2 字节）
+long int li;       // 长整型（通常 8 字节）
+long long int lli; // 更长的整型
+unsigned int ui;   // 无符号整数（只表示正数）
+signed int si;     // 有符号整数（默认）
+```
+
+### 3. 常量与变量
+```cpp
+const double PI = 3.14159;     // 编译期常量，不可修改
+constexpr int MAX = 100;       // C++11，编译期确定
+
+int a;          // 声明+定义，未初始化（值不确定）
+int b = 10;     // 初始化
+int c{20};      // 列表初始化（C++11，推荐）
+int d = {30};   // 等价的列表初始化
+```
+
+### 4. 类型推导（C++11）
+```cpp
+auto x = 10;           // x 推导为 int
+auto y = 3.14;         // y 推导为 double
+auto z = "hello";      // z 推导为 const char*
+
+decltype(x) w;         // w 的类型与 x 相同（int）
+```
+
+### 5. 类型转换
+```cpp
+// C 风格（不推荐）
+int a = (int)3.14;
+
+// C++ 风格
+int b = static_cast<int>(3.14);      // 编译时检查，安全
+int* p = reinterpret_cast<int*>(0x1000); // 重新解释类型
+double* dp = const_cast<double*>(cp);    // 去除 const
+
+// dynamic_cast 用于多态类型（后续章节）
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <typeinfo>
+
+int main() {
+    // 变量初始化方式对比
+    int a = 10;          // 拷贝初始化
+    int b(20);           // 直接初始化
+    int c{30};           // 列表初始化（推荐，最严格）
+    
+    // auto 类型推导
+    auto x = 10;         // int
+    auto y = 3.14f;      // float
+    auto z = 3.14;       // double
+    
+    std::cout << "x type: " << typeid(x).name() << std::endl;
+    
+    // const 与 constexpr
+    const int MAX_SIZE = 100;
+    constexpr int BUFFER = MAX_SIZE * 2;  // 编译期计算
+    
+    // 类型转换
+    double pi = 3.14159;
+    int approx = static_cast<int>(pi);    // 截断为 3
+    
+    return 0;
+}
+```

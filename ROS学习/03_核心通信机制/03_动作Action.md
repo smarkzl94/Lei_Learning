@@ -1,0 +1,251 @@
+# 03 - 动作 Action
+
+## 🎯 学习目标
+- 理解 Action 的适用场景
+- 掌握 Action Server 和 Client 的编写
+- 理解 Goal、Feedback、Result 的关系
+
+---
+
+## 📚 核心知识点
+
+### 1. 为什么需要 Action
+
+Service 是同步阻塞的，不适合长时间任务：
+- 任务执行时间长，Client 一直等待不合理
+- 需要知道任务执行进度
+- 任务可以被取消
+
+Action = Service（发送目标） + Topic（反馈进度） + 取消机制
+
+```
+Action Client                    Action Server
+     │                                │
+     ├────── Goal ─────────────────►│
+     │◄──── Accept/Reject ──────────┤
+     │◄──── Feedback (周期性) ──────┤
+     │◄──── Result ─────────────────┤
+     │                                │
+     ├──── Cancel ─────────────────►│ (可选)
+```
+
+### 2. Action 文件定义
+
+```action
+# 文件名: MoveTo.action
+
+# Goal
+double x
+double y
+---
+# Result
+bool success
+string message
+---
+# Feedback
+double current_x
+double current_y
+double progress  # 0.0 ~ 1.0
+```
+
+### 3. ROS1 Action
+
+#### 配置 CMakeLists.txt
+```cmake
+find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  actionlib_msgs
+)
+
+add_action_files(DIRECTORY action FILES MoveTo.action)
+generate_messages(DEPENDENCIES actionlib_msgs std_msgs)
+```
+
+#### Action Server
+```cpp
+#include <ros/ros.h>
+#include <actionlib/server/simple_action_server.h>
+#include <my_pkg/MoveToAction.h>
+
+class MoveToServer {
+public:
+    MoveToServer(ros::NodeHandle& nh) 
+        : server_(nh, "move_to", boost::bind(&MoveToServer::execute, this, _1), false) {
+        server_.start();
+    }
+    
+    void execute(const my_pkg::MoveToGoalConstPtr& goal) {
+        ros::Rate rate(10);
+        bool success = true;
+        
+        double start_x = 0, start_y = 0;
+        double dx = goal->x - start_x;
+        double dy = goal->y - start_y;
+        
+        for (int i = 0; i <= 100; ++i) {
+            // 检查是否取消
+            if (server_.isPreemptRequested()) {
+                server_.setPreempted();
+                success = false;
+                break;
+            }
+            
+            // 发布反馈
+            my_pkg::MoveToFeedback feedback;
+            feedback.current_x = start_x + dx * i / 100.0;
+            feedback.current_y = start_y + dy * i / 100.0;
+            feedback.progress = i / 100.0;
+            server_.publishFeedback(feedback);
+            
+            rate.sleep();
+        }
+        
+        // 发布结果
+        my_pkg::MoveToResult result;
+        result.success = success;
+        result.message = success ? "Arrived!" : "Cancelled";
+        
+        if (success) {
+            server_.setSucceeded(result);
+        }
+    }
+    
+private:
+    actionlib::SimpleActionServer<my_pkg::MoveToAction> server_;
+};
+```
+
+#### Action Client
+```cpp
+#include <ros/ros.h>
+#include <actionlib/client/simple_action_client.h>
+#include <my_pkg/MoveToAction.h>
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "move_to_client");
+    
+    actionlib::SimpleActionClient<my_pkg::MoveToAction> 
+        client("move_to", true);
+    
+    client.waitForServer();
+    
+    my_pkg::MoveToGoal goal;
+    goal.x = 5.0;
+    goal.y = 3.0;
+    
+    client.sendGoal(goal,
+        actionlib::SimpleActionClient<my_pkg::MoveToAction>::SimpleDoneCallback(),
+        actionlib::SimpleActionClient<my_pkg::MoveToAction>::SimpleActiveCallback(),
+        [](const my_pkg::MoveToFeedbackConstPtr& feedback) {
+            ROS_INFO("Progress: %.1f%%", feedback->progress * 100);
+        });
+    
+    client.waitForResult(ros::Duration(30.0));
+    
+    if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("Success!");
+    }
+    
+    return 0;
+}
+```
+
+### 4. ROS2 Action
+
+ROS2 的 Action 更现代化，集成在 rclcpp 中。
+
+```cpp
+// Server
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
+#include <my_pkg/action/move_to.hpp>
+
+using MoveTo = my_pkg::action::MoveTo;
+using GoalHandleMoveTo = rclcpp_action::ServerGoalHandle<MoveTo>;
+
+class MoveToActionServer : public rclcpp::Node {
+public:
+    MoveToActionServer() : Node("move_to_server") {
+        action_server_ = rclcpp_action::create_server<MoveTo>(
+            this, "move_to",
+            std::bind(&MoveToActionServer::handleGoal, this, _1, _2),
+            std::bind(&MoveToActionServer::handleCancel, this, _1),
+            std::bind(&MoveToActionServer::handleAccepted, this, _1));
+    }
+    
+private:
+    rclcpp_action::Server<MoveTo>::SharedPtr action_server_;
+    
+    rclcpp_action::GoalResponse handleGoal(
+        const rclcpp_action::GoalUUID& uuid,
+        std::shared_ptr<const MoveTo::Goal> goal) {
+        RCLCPP_INFO(get_logger(), "Goal received");
+        return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    }
+    
+    rclcpp_action::CancelResponse handleCancel(
+        const std::shared_ptr<GoalHandleMoveTo> goal_handle) {
+        return rclcpp_action::CancelResponse::ACCEPT;
+    }
+    
+    void handleAccepted(const std::shared_ptr<GoalHandleMoveTo> goal_handle) {
+        std::thread{std::bind(&MoveToActionServer::execute, this, goal_handle)}.detach();
+    }
+    
+    void execute(const std::shared_ptr<GoalHandleMoveTo> goal_handle) {
+        const auto goal = goal_handle->get_goal();
+        auto feedback = std::make_shared<MoveTo::Feedback>();
+        auto result = std::make_shared<MoveTo::Result>();
+        
+        for (int i = 0; i <= 100 && rclcpp::ok(); ++i) {
+            if (goal_handle->is_canceling()) {
+                result->success = false;
+                goal_handle->canceled(result);
+                return;
+            }
+            
+            feedback->progress = i / 100.0;
+            goal_handle->publish_feedback(feedback);
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        
+        result->success = true;
+        goal_handle->succeed(result);
+    }
+};
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：简单的移动 Action
+实现一个 Action，模拟机器人从 (0,0) 移动到目标位置，期间发送进度反馈。
+
+### 实验 2：取消任务
+启动 Action Client 后，在任务完成前发送取消请求，观察处理流程。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：导航 Action
+实现一个完整的导航 Action：
+- 接收目标位姿（x, y, theta）
+- 计算路径（简化版，直线）
+- 发布当前位姿反馈
+- 到达后返回结果
+
+### 练习 2：多目标队列
+Client 发送多个目标，Server 依次执行，支持中途取消当前任务。
+
+---
+
+## ❓ 常见问题
+
+**Q: Action 和 Service 怎么选？**
+A: 短时间（<1秒）用 Service；长时间、需要进度反馈、可取消的用 Action。
+
+**Q: ROS2 Action 为什么需要单独线程执行？**
+A: `handleAccepted` 中如果直接执行会阻塞回调处理，所以需要用新线程。

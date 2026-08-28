@@ -1,0 +1,189 @@
+## 📚 核心知识点
+
+### 1. 基本概念
+```cpp
+class Complex {
+public:
+    Complex(double r = 0, double i = 0) : real(r), imag(i) {}
+    
+    // 成员函数形式重载 +
+    Complex operator+(const Complex& other) const {
+        return Complex(real + other.real, imag + other.imag);
+    }
+    
+    // 重载 <<（友元函数）
+    friend std::ostream& operator<<(std::ostream& os, const Complex& c);
+    
+private:
+    double real, imag;
+};
+
+std::ostream& operator<<(std::ostream& os, const Complex& c) {
+    os << c.real << " + " << c.imag << "i";
+    return os;
+}
+
+// 使用
+Complex a(1, 2);
+Complex b(3, 4);
+Complex c = a + b;       // 等价于 a.operator+(b)
+std::cout << c << std::endl;  // 4 + 6i
+```
+
+### 2. 重载规则
+
+| 运算符 | 建议形式 | 说明 |
+|--------|----------|------|
+| `=` `[]` `()` `->` | 必须是成员 | 语法要求 |
+| `+` `-` `*` `/` | 成员或非成员 | 二元运算符 |
+| `<<` `>>` | 非成员（友元） | 左操作数是流对象 |
+| `++` `--` | 成员 | 区分前置/后置 |
+| `==` `!=` `<` | 成员或非成员 | 通常一起重载 |
+
+### 3. 自增运算符重载
+```cpp
+class Counter {
+public:
+    // 前置++
+    Counter& operator++() {
+        ++value;
+        return *this;
+    }
+    
+    // 后置++（int 是区分标志）
+    Counter operator++(int) {
+        Counter temp(*this);
+        ++value;
+        return temp;
+    }
+    
+private:
+    int value = 0;
+};
+```
+
+### 4. 下标运算符重载
+```cpp
+class Array {
+public:
+    int& operator[](size_t index) {
+        if (index >= size) throw std::out_of_range("Index out of range");
+        return data[index];
+    }
+    
+    const int& operator[](size_t index) const {
+        if (index >= size) throw std::out_of_range("Index out of range");
+        return data[index];
+    }
+    
+private:
+    int* data;
+    size_t size;
+};
+```
+
+### 5. 函数调用运算符
+```cpp
+class MultiplyBy {
+public:
+    explicit MultiplyBy(int factor) : factor(factor) {}
+    
+    int operator()(int value) const {
+        return value * factor;
+    }
+    
+private:
+    int factor;
+};
+
+// 使用
+MultiplyBy triple(3);
+int result = triple(5);  // 15
+```
+> 这种对象称为 "函数对象" 或 "仿函数"（functor），在 STL 中广泛使用。
+
+### 6. 不能重载的运算符
+```cpp
+::    // 作用域解析
+.*    // 成员指针访问
+.     // 成员访问
+?:    // 三目条件
+sizeof
+ typeid
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <cmath>
+
+class Vector2D {
+public:
+    Vector2D(double x = 0, double y = 0) : x(x), y(y) {}
+    
+    // 算术运算符
+    Vector2D operator+(const Vector2D& other) const {
+        return Vector2D(x + other.x, y + other.y);
+    }
+    
+    Vector2D operator-(const Vector2D& other) const {
+        return Vector2D(x - other.x, y - other.y);
+    }
+    
+    Vector2D operator*(double scalar) const {
+        return Vector2D(x * scalar, y * scalar);
+    }
+    
+    // 复合赋值
+    Vector2D& operator+=(const Vector2D& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+    
+    // 比较
+    bool operator==(const Vector2D& other) const {
+        return x == other.x && y == other.y;
+    }
+    
+    bool operator!=(const Vector2D& other) const {
+        return !(*this == other);
+    }
+    
+    // 友元：允许 double * Vector2D
+    friend Vector2D operator*(double scalar, const Vector2D& v) {
+        return v * scalar;
+    }
+    
+    friend std::ostream& operator<<(std::ostream& os, const Vector2D& v) {
+        os << "(" << v.x << ", " << v.y << ")";
+        return os;
+    }
+    
+    double magnitude() const {
+        return std::sqrt(x * x + y * y);
+    }
+    
+private:
+    double x, y;
+};
+
+int main() {
+    Vector2D a(1, 2);
+    Vector2D b(3, 4);
+    
+    Vector2D c = a + b;
+    Vector2D d = 2.0 * a;  // 友元函数
+    
+    std::cout << "a = " << a << std::endl;
+    std::cout << "b = " << b << std::endl;
+    std::cout << "a + b = " << c << std::endl;
+    std::cout << "2 * a = " << d << std::endl;
+    
+    return 0;
+}
+```

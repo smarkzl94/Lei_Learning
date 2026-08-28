@@ -1,0 +1,260 @@
+# 03 - Gazebo 插件配置
+
+## 🎯 学习目标
+- 理解 Gazebo 插件的作用
+- 掌握常用传感器和控制插件的配置
+- 能够在 Gazebo 中运行完整的机器人仿真
+
+---
+
+## 📚 核心知识点
+
+### 1. Gazebo 插件概述
+
+Gazebo 插件扩展了仿真器的功能：
+- **传感器插件**：激光、摄像头、IMU、力传感器
+- **控制插件**：差速驱动、机械臂控制
+- **世界插件**：环境控制
+- **系统插件**：自定义物理行为
+
+### 2. 差速驱动插件
+
+```xml
+<gazebo>
+  <plugin name="differential_drive_controller" 
+          filename="libgazebo_ros_diff_drive.so">
+    
+    <!-- 更新频率 -->
+    <updateRate>50</updateRate>
+    
+    <!-- 左右轮关节名 -->
+    <leftJoint>left_wheel_joint</leftJoint>
+    <rightJoint>right_wheel_joint</rightJoint>
+    
+    <!-- 轮子尺寸 -->
+    <wheelSeparation>0.354</wheelSeparation>
+    <wheelDiameter>0.194</wheelDiameter>
+    
+    <!-- 最大扭矩 -->
+    <torque>20</torque>
+    
+    <!-- 发布的话题 -->
+    <commandTopic>cmd_vel</commandTopic>
+    <odometryTopic>odom</odometryTopic>
+    
+    <!-- TF 坐标系 -->
+    <odometryFrame>odom</odometryFrame>
+    <robotBaseFrame>base_footprint</robotBaseFrame>
+    
+    <!-- 是否发布 TF -->
+    <publishWheelTF>false</publishWheelTF>
+    <publishOdomTF>true</publishOdomTF>
+    <publishWheelJointState>true</publishWheelJointState>
+    
+    <!-- 里程计来源：encoder（编码器）或 world（仿真 ground truth） -->
+    <odometrySource>encoder</odometrySource>
+  </plugin>
+</gazebo>
+```
+
+### 3. 激光雷达插件
+
+```xml
+<gazebo reference="laser_link">
+  <material>Gazebo/Black</material>
+  
+  <sensor type="ray" name="laser_sensor">
+    <pose>0 0 0 0 0 0</pose>
+    <visualize>true</visualize>
+    <update_rate>10</update_rate>
+    
+    <ray>
+      <scan>
+        <horizontal>
+          <samples>360</samples>          <!-- 扫描点数 -->
+          <resolution>1</resolution>
+          <min_angle>-3.14159</min_angle>  <!-- -π -->
+          <max_angle>3.14159</max_angle>   <!-- +π -->
+        </horizontal>
+      </scan>
+      <range>
+        <min>0.1</min>
+        <max>10.0</max>
+        <resolution>0.01</resolution>
+      </range>
+      <noise>
+        <type>gaussian</type>
+        <mean>0.0</mean>
+        <stddev>0.01</stddev>
+      </noise>
+    </ray>
+    
+    <plugin name="laser_plugin" 
+            filename="libgazebo_ros_laser.so">
+      <topicName>/scan</topicName>
+      <frameName>laser_link</frameName>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### 4. 摄像头插件
+
+```xml
+<gazebo reference="camera_link">
+  <sensor type="camera" name="camera_sensor">
+    <update_rate>30.0</update_rate>
+    <camera>
+      <horizontal_fov>1.047</horizontal_fov>  <!-- 60度 -->
+      <image>
+        <width>640</width>
+        <height>480</height>
+        <format>R8G8B8</format>
+      </image>
+      <clip>
+        <near>0.05</near>
+        <far>3</far>
+      </clip>
+      <noise>
+        <type>gaussian</type>
+        <mean>0.0</mean>
+        <stddev>0.007</stddev>
+      </noise>
+    </camera>
+    
+    <plugin name="camera_plugin" 
+            filename="libgazebo_ros_camera.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>30.0</updateRate>
+      <cameraName>camera</cameraName>
+      <imageTopicName>image_raw</imageTopicName>
+      <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+      <frameName>camera_link</frameName>
+      <hackBaseline>0.07</hackBaseline>
+      <distortionK1>0.0</distortionK1>
+      <distortionK2>0.0</distortionK2>
+      <distortionK3>0.0</distortionK3>
+      <distortionT1>0.0</distortionT1>
+      <distortionT2>0.0</distortionT2>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### 5. IMU 插件
+
+```xml
+<gazebo reference="imu_link">
+  <gravity>true</gravity>
+  <sensor name="imu_sensor" type="imu">
+    <always_on>true</always_on>
+    <update_rate>100</update_rate>
+    <imu>
+      <angular_velocity>
+        <x><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></x>
+        <y><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></y>
+        <z><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></z>
+      </angular_velocity>
+      <linear_acceleration>
+        <x><noise type="gaussian"><mean>0</mean><stddev>0.1</stddev></noise></x>
+        <y><noise type="gaussian"><mean>0</mean><stddev>0.1</stddev></noise></y>
+        <z><noise type="gaussian"><mean>0</mean><stddev>0.1</stddev></noise></z>
+      </linear_acceleration>
+    </imu>
+    <plugin name="imu_plugin" 
+            filename="libgazebo_ros_imu.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>100</updateRate>
+      <topicName>imu</topicName>
+      <bodyName>imu_link</bodyName>
+      <frameName>imu_link</frameName>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### 6. 材质和摩擦
+
+```xml
+<!-- 连杆材质 -->
+<link name="base_link">
+  <visual>
+    <geometry>
+      <box size="0.5 0.3 0.1"/>
+    </geometry>
+  </visual>
+  
+  <collision>
+    <geometry>
+      <box size="0.5 0.3 0.1"/>
+    </geometry>
+  </collision>
+  
+  <inertial>
+    <mass value="5.0"/>
+    <inertia ixx="0.1" ixy="0" ixz="0"
+             iyy="0.1" iyz="0"
+             izz="0.1"/>
+  </inertial>
+</link>
+
+<!-- Gazebo 物理属性 -->
+<gazebo reference="base_link">
+  <material>Gazebo/Blue</material>
+  <mu1>0.5</mu1>       <!-- 摩擦系数 -->
+  <mu2>0.5</mu2>
+  <kp>1000000</kp>     <!-- 接触刚度 -->
+  <kd>1</kd>           <!-- 接触阻尼 -->
+</gazebo>
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：配置完整机器人
+为之前创建的 Xacro 机器人添加：
+- 差速驱动插件
+- 激光雷达插件
+- 摄像头插件
+
+### 实验 2：Gazebo 中测试
+```bash
+roslaunch my_pkg robot_gazebo.launch
+```
+
+用 `rostopic pub` 发送 `cmd_vel` 控制机器人移动，观察传感器数据。
+
+### 实验 3：调整物理参数
+修改质量、摩擦系数等参数，观察对机器人运动的影响。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：传感器标定
+在 Gazebo 中放置已知尺寸的物体，验证激光雷达和摄像头的测量精度。
+
+### 练习 2：添加噪声
+为传感器添加不同级别的噪声，观察对导航算法的影响。
+
+### 练习 3：多传感器融合
+同时启用激光雷达、摄像头和 IMU，编写节点订阅所有数据并打印。
+
+---
+
+## ❓ 常见问题
+
+**Q: 机器人在 Gazebo 中乱跑？**
+A: 检查轮子质量和惯性是否合理。质量太小会导致数值不稳定。
+
+**Q: 传感器数据不对？**
+A: 检查 `frameName` 是否与 URDF 中的 link 名一致；检查 TF 是否正确发布。
+
+**Q: Gazebo 插件文件名是什么？**
+A: 常见插件：
+- `libgazebo_ros_diff_drive.so` — 差速驱动
+- `libgazebo_ros_laser.so` — 激光雷达
+- `libgazebo_ros_camera.so` — 摄像头
+- `libgazebo_ros_imu.so` — IMU
+- `libgazebo_ros_joint_state_publisher.so` — 关节状态

@@ -1,0 +1,137 @@
+## 📚 核心知识点
+
+### 1. C++ 内存区域
+```
++------------------+
+| 栈区 (Stack)     |  局部变量、函数参数，自动管理
++------------------+
+| 堆区 (Heap)      |  new/malloc 分配，手动管理
++------------------+
+| 全局/静态区       |  全局变量、静态变量
++------------------+
+| 常量区           |  字符串字面量、const 全局变量
++------------------+
+| 代码区           |  程序指令
++------------------+
+```
+
+### 2. new/delete vs malloc/free
+```cpp
+// malloc/free（C 风格）
+int* p1 = (int*)malloc(sizeof(int) * 10);  // 分配 10 个 int
+free(p1);
+
+// new/delete（C++ 风格，推荐）
+int* p2 = new int;          // 单个对象
+delete p2;
+
+int* p3 = new int[10];      // 数组
+delete[] p3;                // 必须用 delete[]
+
+// new 的优势：
+// 1. 自动计算大小
+// 2. 调用构造函数
+// 3. 类型安全（无需强转）
+```
+
+### 3.  placement new
+```cpp
+// 在已分配的内存上构造对象
+char buffer[sizeof(MyClass)];
+MyClass* obj = new (buffer) MyClass();  // 在 buffer 上构造
+
+// 手动调用析构函数（不释放内存）
+obj->~MyClass();
+```
+
+### 4. 智能指针回顾
+```cpp
+// 现代 C++ 中应优先使用智能指针
+std::unique_ptr<int> p1(new int(10));
+auto p2 = std::make_shared<int>(20);  // 推荐
+
+// 自定义删除器
+std::unique_ptr<FILE, decltype(&fclose)> 
+    file(fopen("test.txt", "r"), fclose);
+```
+
+### 5. 内存对齐
+```cpp
+// alignas 指定对齐要求
+struct alignas(64) CacheLine {  // 64 字节对齐
+    int data[16];
+};
+
+// alignof 查询对齐要求
+std::cout << alignof(int) << std::endl;      // 通常是 4
+std::cout << alignof(double) << std::endl;   // 通常是 8
+
+// aligned_alloc（C++17）
+void* p = aligned_alloc(64, 1024);  // 64 字节对齐，分配 1024 字节
+free(p);
+```
+
+### 6. 内存检测工具
+```bash
+# Valgrind（Linux）
+valgrind --leak-check=full ./program
+
+# AddressSanitizer（GCC/Clang）
+g++ -fsanitize=address -g program.cpp
+./a.out
+
+# 检测内容：内存泄漏、越界访问、使用未初始化内存、重复释放等
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <memory>
+
+class Buffer {
+public:
+    explicit Buffer(size_t size) : size(size), data(new int[size]) {
+        std::cout << "Buffer allocated: " << size << std::endl;
+    }
+    
+    ~Buffer() {
+        delete[] data;
+        std::cout << "Buffer freed" << std::endl;
+    }
+    
+    // 禁止拷贝
+    Buffer(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+    
+    // 允许移动
+    Buffer(Buffer&& other) noexcept 
+        : size(other.size), data(other.data) {
+        other.data = nullptr;
+        other.size = 0;
+    }
+    
+    int& operator[](size_t index) { return data[index]; }
+    
+private:
+    size_t size;
+    int* data;
+};
+
+int main() {
+    // RAII 内存管理
+    {
+        Buffer buf(100);
+        buf[0] = 42;
+    }  // 自动释放
+    
+    // 使用智能指针
+    auto arr = std::make_unique<int[]>(1000);
+    arr[0] = 1;
+    
+    return 0;
+}
+```

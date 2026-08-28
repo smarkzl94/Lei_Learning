@@ -1,0 +1,215 @@
+# 03 - rqt 与 rosbag
+
+## 🎯 学习目标
+- 掌握 rqt 插件工具集
+- 掌握 rosbag 记录和回放
+- 理解日志和调试工具
+
+---
+
+## 📚 核心知识点
+
+### 1. rqt 工具集
+
+rqt 是基于 Qt 的 ROS GUI 工具框架：
+
+```bash
+# 启动 rqt 主界面
+rqt                    # ROS1
+ros2 run rqt_gui rqt_gui  # ROS2
+
+# 常用插件
+rqt_graph              # 节点和话题关系图
+rqt_plot               # 实时数据曲线
+rqt_console            # 日志查看
+rqt_reconfigure        # 动态参数调节
+rqt_image_view         # 图像查看
+rqt_bag                # bag 文件可视化
+rqt_topic              # 话题监控
+rqt_tf_tree            # TF 树可视化
+```
+
+#### rqt_plot 使用
+```bash
+# 绘制单个话题字段
+rqt_plot /turtle1/pose/x
+
+# 绘制多个字段
+rqt_plot /turtle1/pose/x:y
+
+# ROS2
+ros2 run rqt_plot rqt_plot /topic/field
+```
+
+#### rqt_console 使用
+```bash
+# 启动日志查看器
+rqt_console
+
+# 日志级别
+ROS_DEBUG("debug info");     // 调试
+ROS_INFO("normal info");      // 信息
+ROS_WARN("warning!");         // 警告
+ROS_ERROR("error!");          // 错误
+ROS_FATAL("fatal error!");    // 致命
+```
+
+### 2. rosbag（ROS1）
+
+#### 记录
+```bash
+# 记录所有话题
+rosbag record -a
+
+# 记录指定话题
+rosbag record /tf /scan /odom
+
+# 指定文件名和大小限制
+rosbag record -O session1 /scan --split --size=1024
+
+# 记录时压缩
+rosbag record -j /scan
+```
+
+#### 回放
+```bash
+# 基本信息
+rosbag info my_bag.bag
+
+# 回放
+rosbag play my_bag.bag
+
+# 倍速回放
+rosbag play my_bag.bag -r 2    # 2 倍速
+rosbag play my_bag.bag -r 0.5  # 半速
+
+# 循环回放
+rosbag play my_bag.bag -l
+
+# 指定时间范围
+rosbag play my_bag.bag -s 10 -u 30  # 从 10s 开始，播放 30s
+
+# 过滤话题
+rosbag play my_bag.bag --topics /scan /tf
+```
+
+#### 其他操作
+```bash
+# 压缩
+rosbag compress my_bag.bag
+
+# 解压
+rosbag decompress my_bag.bag
+
+# 过滤话题到新 bag
+rosbag filter my_bag.bag subset.bag "topic == '/scan' or topic == '/tf'"
+
+# 修复
+rosbag fix old.bag repaired.bag
+```
+
+### 3. ros2 bag（ROS2）
+
+```bash
+# 记录
+ros2 bag record /tf /scan
+ros2 bag record -a
+
+# 回放
+ros2 bag play my_bag
+
+# 信息
+ros2 bag info my_bag
+
+# 转换为 SQLite3（默认）或 MCAP 格式
+ros2 bag record -s mcap /scan
+```
+
+### 4. 日志系统
+
+#### ROS1
+```cpp
+// 设置日志级别
+if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, 
+                                   ros::console::levels::Debug)) {
+    ros::console::notifyLoggerLevelsChanged();
+}
+
+// 条件日志
+ROS_INFO_COND(condition, "message");
+ROS_INFO_ONCE("This prints only once");
+ROS_INFO_THROTTLE(1.0, "At most once per second");
+```
+
+#### ROS2
+```cpp
+// 日志级别
+RCLCPP_DEBUG(node->get_logger(), "debug");
+RCLCPP_INFO(node->get_logger(), "info");
+RCLCPP_WARN(node->get_logger(), "warn");
+RCLCPP_ERROR(node->get_logger(), "error");
+
+// 一次性日志
+RCLCPP_INFO_ONCE(node->get_logger(), "once");
+
+// 节流日志
+RCLCPP_INFO_THROTTLE(node->get_logger(), *clock, 1000, "1Hz max");
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：rqt 监控
+```bash
+roslaunch turtlesim turtlesim.launch
+
+# 终端 2
+rqt_plot /turtle1/pose/x:y:theta
+
+# 终端 3
+rqt_console
+```
+
+### 实验 2：rosbag 记录回放
+```bash
+# 记录小海龟运行
+rosbag record -O turtle_session /turtle1/pose /turtle1/cmd_vel
+
+# 控制小海龟移动，然后停止记录
+
+# 重启 turtlesim（不启动 teleop）
+rosrun turtlesim turtlesim_node
+
+# 回放
+rosbag play turtle_session.bag
+```
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：数据采集脚本
+编写一个脚本，自动记录特定话题并在一定时间后停止。
+
+### 练习 2：数据分析
+用 Python 读取 rosbag，提取数据并绘制图表（位置轨迹、速度曲线等）。
+
+### 练习 3：日志系统
+为你的节点添加完善的日志系统，支持：
+- 不同级别的日志
+- 日志文件输出
+- 运行时级别切换
+
+---
+
+## ❓ 常见问题
+
+**Q: rosbag 文件太大？**
+A: 使用 `--split` 按大小分割，或只记录必要话题，或启用压缩 `-j`。
+
+**Q: rosbag 回放时时间戳不对？**
+A: 使用 `--clock` 发布仿真时间，确保节点使用 `/clock` 话题的时间。
+
+**Q: rqt_plot 不显示数据？**
+A: 检查话题是否有数据（`rostopic hz`），检查字段路径是否正确。

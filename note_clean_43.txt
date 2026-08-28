@@ -1,0 +1,170 @@
+## 📚 核心知识点
+
+### 1. URDF 简介
+
+URDF (Unified Robot Description Format) 是 XML 格式的机器人描述文件：
+- 定义机器人的连杆（link）和关节（joint）
+- 包含几何形状、质量、惯性等属性
+- 被 RViz、Gazebo、MoveIt 等工具使用
+
+### 2. URDF 基本结构
+
+```xml
+<?xml version="1.0"?>
+<robot name="my_robot">
+  
+  <!-- 连杆定义 -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.5 0.3 0.1"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.5 0.3 0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0"
+               iyy="0.01" iyz="0"
+               izz="0.01"/>
+    </inertial>
+  </link>
+  
+  <!-- 关节定义 -->
+  <joint name="wheel_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_left"/>
+    <origin xyz="0 0.2 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  
+  <link name="wheel_left">
+    <visual>
+      <geometry>
+        <cylinder radius="0.1" length="0.05"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+  
+</robot>
+```
+
+### 3. Joint 类型
+
+| 类型 | 说明 | 自由度 |
+|------|------|--------|
+| `revolute` | 旋转关节，有角度限制 | 1 |
+| `continuous` | 连续旋转关节 | 1 |
+| `prismatic` | 滑动关节 | 1 |
+| `fixed` | 固定关节 | 0 |
+| `floating` | 6 自由度 | 6 |
+| `planar` | 平面移动 | 3 |
+
+### 4. 几何形状
+
+```xml
+<!-- 立方体 -->
+<box size="width height depth"/>
+
+<!-- 圆柱体 -->
+<cylinder radius="0.1" length="0.05"/>
+
+<!-- 球体 -->
+<sphere radius="0.1"/>
+
+<!-- 外部网格 -->
+<mesh filename="package://my_pkg/meshes/base.dae"/>
+```
+
+### 5. 在 ROS 中加载 URDF
+
+```xml
+<!-- launch 文件 -->
+<launch>
+  <!-- 加载 URDF 到参数服务器 -->
+  <param name="robot_description" 
+         command="$(find xacro)/xacro $(find my_pkg)/urdf/robot.urdf" />
+  
+  <!-- 发布 TF -->
+  <node pkg="robot_state_publisher" type="robot_state_publisher" 
+        name="robot_state_publisher" />
+  
+  <!-- 关节状态发布 -->
+  <node pkg="joint_state_publisher" type="joint_state_publisher" 
+        name="joint_state_publisher" />
+  
+  <!-- RViz -->
+  <node pkg="rviz" type="rviz" name="rviz" 
+        args="-d $(find my_pkg)/config/robot.rviz"/>
+</launch>
+```
+
+### 6. 检查 URDF
+
+```bash
+# 检查语法
+check_urdf robot.urdf
+
+# 可视化
+urdf_to_graphiz robot.urdf  # 生成 PDF
+dot -Tpdf robot.gv -o robot.pdf
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：创建简单机器人
+创建一个两轮差分机器人 URDF：
+- 长方体底座
+- 两个圆柱体轮子
+- 一个万向轮
+
+### 实验 2：在 RViz 中查看
+```bash
+roslaunch my_pkg display.launch
+```
+
+调整 joint_state_publisher 的滑块，观察关节运动。
+
+### 实验 3：添加传感器
+在机器人上添加激光雷达和摄像头的 link（暂时用简单几何体代替）。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：机械臂 URDF
+创建一个 3 自由度机械臂的 URDF，每个关节都是 revolute 类型。
+
+### 练习 2：移动机器人
+创建一个完整的移动机器人 URDF，包含：
+- 底盘
+- 两个驱动轮（continuous 关节）
+- 一个万向轮（fixed 关节）
+- 激光雷达支架（fixed 关节）
+
+### 练习 3：质量属性
+为每个 link 添加合理的质量和惯性矩阵。学习如何计算简单几何体的惯性。
+
+---
+
+## ❓ 常见问题
+
+**Q: visual 和 collision 为什么要分开？**
+A: visual 用于显示，可以复杂精细；collision 用于物理计算，应该简化以提高性能。
+
+**Q: 惯性矩阵怎么算？**
+A: 对于规则几何体有公式。实际中常用 CAD 软件导出，或用 approx 工具估算。
+
+**Q: 为什么必须有一个 base_link？**
+A: 这是约定俗成的根连杆。robot_state_publisher 以此为根发布 TF。

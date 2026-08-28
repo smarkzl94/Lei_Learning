@@ -1,0 +1,216 @@
+## 📚 核心知识点
+
+### 1. 基本继承语法
+```cpp
+class Animal {           // 基类
+public:
+    void eat() {
+        std::cout << "Animal eats" << std::endl;
+    }
+protected:
+    int age;
+};
+
+class Dog : public Animal {  // 派生类，public 继承
+public:
+    void bark() {
+        std::cout << "Dog barks" << std::endl;
+    }
+};
+
+// 使用
+Dog dog;
+dog.eat();    // 继承自 Animal
+dog.bark();   // Dog 自己的方法
+```
+
+### 2. 三种继承方式
+
+| 继承方式 | 基类 public | 基类 protected | 基类 private |
+|---------|------------|---------------|-------------|
+| `public` | public | protected | 不可访问 |
+| `protected` | protected | protected | 不可访问 |
+| `private` | private | private | 不可访问 |
+
+```cpp
+class Base {
+public:
+    int a;
+protected:
+    int b;
+private:
+    int c;
+};
+
+class PublicDerive : public Base {
+    // a 是 public, b 是 protected, c 不可访问
+};
+
+class ProtectedDerive : protected Base {
+    // a 是 protected, b 是 protected, c 不可访问
+};
+
+class PrivateDerive : private Base {
+    // a 是 private, b 是 private, c 不可访问
+};
+```
+
+> **最常用的是 `public` 继承**，表示 "is-a" 关系。
+
+### 3. 构造与析构顺序
+```cpp
+class Base {
+public:
+    Base() { std::cout << "Base constructor" << std::endl; }
+    ~Base() { std::cout << "Base destructor" << std::endl; }
+};
+
+class Member {
+public:
+    Member() { std::cout << "Member constructor" << std::endl; }
+    ~Member() { std::cout << "Member destructor" << std::endl; }
+};
+
+class Derived : public Base {
+public:
+    Derived() { std::cout << "Derived constructor" << std::endl; }
+    ~Derived() { std::cout << "Derived destructor" << std::endl; }
+private:
+    Member m;
+};
+
+// 创建 Derived 对象：
+// Base constructor → Member constructor → Derived constructor
+// 销毁时：
+// Derived destructor → Member destructor → Base destructor
+```
+
+### 4. 基类构造函数的调用
+```cpp
+class Person {
+public:
+    Person(const std::string& n) : name(n) {}
+private:
+    std::string name;
+};
+
+class Student : public Person {
+public:
+    // 调用基类构造函数
+    Student(const std::string& n, int id) 
+        : Person(n), studentId(id) {}
+private:
+    int studentId;
+};
+```
+
+### 5. 名字隐藏
+```cpp
+class Base {
+public:
+    void foo() { std::cout << "Base::foo" << std::endl; }
+    void foo(int x) { std::cout << "Base::foo(int)" << std::endl; }
+};
+
+class Derived : public Base {
+public:
+    void foo() { std::cout << "Derived::foo" << std::endl; }
+    // 注意：Derived::foo() 隐藏了 Base::foo() 和 Base::foo(int)
+};
+
+Derived d;
+d.foo();       // Derived::foo
+d.Base::foo(); // Base::foo（显式调用）
+// d.foo(10);  // 错误！Base::foo(int) 被隐藏了
+```
+
+### 6. 多重继承
+```cpp
+class Camera {
+public:
+    void takePhoto() {}
+};
+
+class Phone {
+public:
+    void call() {}
+};
+
+class Smartphone : public Camera, public Phone {
+    // 同时继承两个基类
+};
+
+// 菱形继承问题
+class A { public: int x; };
+class B : public A {};
+class C : public A {};
+class D : public B, public C {
+    // D 中有两个 A::x！
+};
+
+// 解决：虚继承
+class B : virtual public A {};  // 虚继承
+class C : virtual public A {};
+class D : public B, public C {
+    // 现在 D 中只有一个 A::x
+};
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <string>
+
+class Shape {
+public:
+    Shape(const std::string& n) : name(n) {}
+    
+    virtual double getArea() const = 0;  // 纯虚函数
+    
+    void printInfo() const {
+        std::cout << name << ": area = " << getArea() << std::endl;
+    }
+    
+protected:
+    std::string name;
+};
+
+class Rectangle : public Shape {
+public:
+    Rectangle(double w, double h) 
+        : Shape("Rectangle"), width(w), height(h) {}
+    
+    double getArea() const override {
+        return width * height;
+    }
+    
+private:
+    double width, height;
+};
+
+class Circle : public Shape {
+public:
+    Circle(double r) : Shape("Circle"), radius(r) {}
+    
+    double getArea() const override {
+        return 3.14159 * radius * radius;
+    }
+    
+private:
+    double radius;
+};
+
+int main() {
+    Rectangle rect(5, 3);
+    Circle circle(4);
+    
+    rect.printInfo();   // Rectangle: area = 15
+    circle.printInfo(); // Circle: area = 50.265...
+    
+    return 0;
+}
+```

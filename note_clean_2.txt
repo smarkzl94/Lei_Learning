@@ -1,0 +1,151 @@
+## 📚 核心知识点
+
+### 1. 条件语句
+
+#### if-else
+```cpp
+if (condition) {
+    // 条件为真时执行
+} else if (another_condition) {
+    // 另一个条件为真时执行
+} else {
+    // 其他情况
+}
+
+// 单条语句可省略花括号（不推荐）
+if (x > 0)
+    std::cout << "正数";
+```
+
+#### switch-case
+```cpp
+switch (expression) {
+    case value1:
+        // 代码
+        break;  // 不要忘记 break！
+    case value2:
+        // 代码
+        break;
+    default:
+        // 默认情况
+}
+```
+> `switch` 只能用于整型、字符型或枚举类型。
+
+### 2. 循环语句
+
+#### for 循环
+```cpp
+// 传统 for
+for (int i = 0; i < 10; ++i) {
+    std::cout << i << " ";
+}
+
+// 范围 for（C++11，遍历容器）
+int arr[] = {1, 2, 3, 4, 5};
+for (int x : arr) {
+    std::cout << x << " ";
+}
+
+// 带引用，可修改元素
+for (int& x : arr) {
+    x *= 2;
+}
+
+// auto 推导
+for (auto x : arr) {
+    std::cout << x << " ";
+}
+```
+
+#### while 循环
+```cpp
+while (condition) {
+    // 条件为真时重复执行
+}
+
+// 示例：读取输入直到遇到负数
+int num;
+while (std::cin >> num && num >= 0) {
+    std::cout << "输入: " << num << std::endl;
+}
+```
+
+#### do-while 循环
+```cpp
+do {
+    // 至少执行一次
+} while (condition);
+
+// 示例：菜单选择
+do {
+    show_menu();
+    std::cin >> choice;
+    process(choice);
+} while (choice != 0);
+```
+
+### 3. 循环控制
+```cpp
+for (int i = 0; i < 100; ++i) {
+    if (i % 2 == 0) continue;  // 跳过偶数
+    if (i > 50) break;          // i > 50 时退出循环
+    std::cout << i << " ";
+}
+```
+
+### 4. 条件运算符
+```cpp
+// C++17 if 带初始化
+if (auto it = map.find(key); it != map.end()) {
+    // it 在这里可用
+    std::cout << it->second;
+}
+
+// switch 也支持初始化（C++17）
+switch (auto ch = getchar(); ch) {
+    case 'y': /* ... */ break;
+    case 'n': /* ... */ break;
+}
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <vector>
+
+int main() {
+    // 示例：判断闰年
+    int year;
+    std::cout << "输入年份: ";
+    std::cin >> year;
+    
+    bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    
+    if (is_leap) {
+        std::cout << year << " 是闰年" << std::endl;
+    } else {
+        std::cout << year << " 不是闰年" << std::endl;
+    }
+    
+    // 示例：九九乘法表
+    for (int i = 1; i <= 9; ++i) {
+        for (int j = 1; j <= i; ++j) {
+            std::cout << j << "x" << i << "=" << i*j << "\t";
+        }
+        std::cout << std::endl;
+    }
+    
+    // 示例：范围 for
+    std::vector<int> nums = {1, 2, 3, 4, 5};
+    for (const auto& n : nums) {
+        std::cout << n << " ";
+    }
+    
+    return 0;
+}
+```

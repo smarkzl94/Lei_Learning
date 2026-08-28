@@ -1,0 +1,235 @@
+## 📚 核心知识点
+
+### 1. 构造函数
+
+#### 默认构造函数
+```cpp
+class Student {
+public:
+    Student() {  // 默认构造函数
+        name = "Unknown";
+        age = 0;
+    }
+private:
+    std::string name;
+    int age;
+};
+
+Student stu;  // 调用默认构造函数
+```
+
+#### 带参数的构造函数
+```cpp
+class Student {
+public:
+    Student(const std::string& n, int a) : name(n), age(a) {}
+private:
+    std::string name;
+    int age;
+};
+
+Student stu("Alice", 20);  // 直接初始化
+Student stu2{"Bob", 21};   // 列表初始化（推荐）
+```
+
+#### 初始化列表
+```cpp
+class MyClass {
+public:
+    MyClass(int a, int b) 
+        : member1(a), member2(b), const_member(100) {
+        // 初始化列表在函数体之前执行
+    }
+private:
+    int member1;
+    int member2;
+    const int const_member;   // const 成员必须用初始化列表
+    int& ref_member;          // 引用成员必须用初始化列表
+};
+```
+
+> **初始化列表优于函数体内赋值**：避免两次赋值，对 const 和引用成员是必须的。
+
+### 2. 拷贝构造函数
+```cpp
+class String {
+public:
+    // 拷贝构造函数
+    String(const String& other) 
+        : data(new char[strlen(other.data) + 1]) {
+        strcpy(data, other.data);
+        std::cout << "Copy constructor" << std::endl;
+    }
+    
+private:
+    char* data;
+};
+
+// 调用时机
+String s1("Hello");
+String s2 = s1;        // 拷贝构造
+String s3(s1);         // 拷贝构造
+void foo(String s);    // 值传递参数
+String bar();          // 返回值优化（RVO）
+```
+
+### 3. 赋值运算符
+```cpp
+class String {
+public:
+    // 拷贝赋值运算符
+    String& operator=(const String& other) {
+        // 1. 检查自赋值
+        if (this == &other) return *this;
+        
+        // 2. 释放原有资源
+        delete[] data;
+        
+        // 3. 分配新资源并拷贝
+        data = new char[strlen(other.data) + 1];
+        strcpy(data, other.data);
+        
+        return *this;
+    }
+};
+
+// 使用
+String s1("Hello");
+String s2("World");
+s2 = s1;  // 赋值运算符
+```
+
+### 4. 析构函数
+```cpp
+class String {
+public:
+    String(const char* str) {
+        data = new char[strlen(str) + 1];
+        strcpy(data, str);
+    }
+    
+    ~String() {  // 析构函数
+        delete[] data;  // 释放资源
+        std::cout << "Destructor called" << std::endl;
+    }
+    
+private:
+    char* data;
+};
+
+// 析构时机
+void test() {
+    String s("Hello");  // 函数结束，s 被销毁
+}  // 自动调用析构函数
+```
+
+### 5. 深浅拷贝
+```cpp
+// 浅拷贝：只拷贝指针值（默认行为）
+class ShallowCopy {
+    int* data;
+    // 默认拷贝：data 指针被复制，两个对象指向同一块内存
+};
+
+// 深拷贝：拷贝指针指向的内容
+class DeepCopy {
+    int* data;
+public:
+    DeepCopy(const DeepCopy& other) 
+        : data(new int(*other.data)) {}  // 分配新内存并拷贝值
+};
+```
+
+### 6. 移动语义（C++11）
+```cpp
+class String {
+public:
+    // 移动构造函数
+    String(String&& other) noexcept 
+        : data(other.data) {
+        other.data = nullptr;  // 将源对象置空
+    }
+    
+    // 移动赋值运算符
+    String& operator=(String&& other) noexcept {
+        if (this == &other) return *this;
+        delete[] data;
+        data = other.data;
+        other.data = nullptr;
+        return *this;
+    }
+};
+
+// 触发移动
+String createString() { return String("Hello"); }
+String s = createString();  // 移动构造（避免拷贝）
+```
+
+### 7. =default 和 =delete
+```cpp
+class MyClass {
+public:
+    MyClass() = default;                    // 显式使用编译器生成的默认构造
+    MyClass(const MyClass&) = delete;       // 禁止拷贝
+    MyClass& operator=(const MyClass&) = delete;  // 禁止赋值
+};
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <cstring>
+
+class String {
+public:
+    // 构造函数
+    explicit String(const char* str = "") {
+        data = new char[strlen(str) + 1];
+        strcpy(data, str);
+        std::cout << "Constructor: " << data << std::endl;
+    }
+    
+    // 拷贝构造
+    String(const String& other) : data(new char[strlen(other.data) + 1]) {
+        strcpy(data, other.data);
+        std::cout << "Copy constructor: " << data << std::endl;
+    }
+    
+    // 移动构造
+    String(String&& other) noexcept : data(other.data) {
+        other.data = nullptr;
+        std::cout << "Move constructor" << std::endl;
+    }
+    
+    // 析构
+    ~String() {
+        std::cout << "Destructor: " << (data ? data : "null") << std::endl;
+        delete[] data;
+    }
+    
+    // 拷贝赋值
+    String& operator=(const String& other) {
+        if (this != &other) {
+            delete[] data;
+            data = new char[strlen(other.data) + 1];
+            strcpy(data, other.data);
+        }
+        return *this;
+    }
+    
+private:
+    char* data;
+};
+
+int main() {
+    String s1("Hello");
+    String s2 = s1;       // 拷贝构造
+    String s3("World");
+    s3 = s1;              // 拷贝赋值
+    return 0;
+}
+```

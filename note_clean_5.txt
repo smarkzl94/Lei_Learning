@@ -1,0 +1,181 @@
+## 📚 核心知识点
+
+### 1. 数组基础
+
+#### 声明与初始化
+```cpp
+// 基本声明
+int arr[5];                    // 5 个 int，未初始化
+int arr2[5] = {1, 2, 3, 4, 5}; // 完整初始化
+int arr3[5] = {1, 2};          // 部分初始化，其余为 0
+int arr4[] = {1, 2, 3};        // 编译器自动推导大小为 3
+int arr5[5] = {};              // 全部初始化为 0（C++11）
+
+// 数组大小必须是编译期常量
+const int SIZE = 10;
+int arr[SIZE];                 // OK
+
+int n = 10;
+// int arr[n];                 // C++ 标准不允许（VLA 是 GCC 扩展）
+```
+
+#### 数组遍历
+```cpp
+int arr[] = {1, 2, 3, 4, 5};
+
+// 下标遍历
+for (int i = 0; i < 5; ++i) {
+    std::cout << arr[i] << " ";
+}
+
+// 指针遍历
+for (int* p = arr; p < arr + 5; ++p) {
+    std::cout << *p << " ";
+}
+
+// 范围 for（C++11）
+for (int x : arr) {
+    std::cout << x << " ";
+}
+
+// 带引用的范围 for（可修改）
+for (int& x : arr) {
+    x *= 2;  // 每个元素翻倍
+}
+```
+
+### 2. 多维数组
+```cpp
+// 二维数组
+int matrix[3][4] = {
+    {1, 2, 3, 4},
+    {5, 6, 7, 8},
+    {9, 10, 11, 12}
+};
+
+// 遍历
+for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 4; ++j) {
+        std::cout << matrix[i][j] << " ";
+    }
+    std::cout << std::endl;
+}
+
+// 部分初始化
+int mat2[3][4] = {{1}, {2}, {3}};  // 每行第一个元素初始化
+```
+
+### 3. 数组作为函数参数
+```cpp
+// 以下三种声明等价
+void foo(int arr[10]);
+void foo(int arr[]);
+void foo(int* arr);
+
+// 推荐：同时传递数组大小
+void print_array(const int* arr, size_t size);
+void print_array(const int arr[], size_t size);
+
+// 二维数组参数（必须指定列数）
+void print_matrix(int mat[][4], int rows);
+```
+
+### 4. C 风格字符串
+```cpp
+// C 风格字符串：以 \0 结尾的字符数组
+char str1[] = "Hello";          // 大小为 6（包含 \0）
+char str2[20] = "Hello";        // 前 6 个字符初始化，其余为 0
+char str3[] = {'H', 'e', 'l', 'l', 'o', '\0'};
+
+// 常用 C 字符串函数（<cstring>）
+#include <cstring>
+
+strlen(str1);       // 字符串长度（不含 \0）
+strcpy(dst, src);   // 拷贝字符串（确保 dst 足够大！）
+strncpy(dst, src, n); // 拷贝最多 n 个字符
+strcat(dst, src);   // 拼接字符串
+strcmp(s1, s2);     // 比较字符串（0 表示相等）
+strchr(str, 'l');   // 查找字符
+strstr(str, "ll");  // 查找子串
+```
+
+### 5. C++ string 类（推荐）
+```cpp
+#include <string>
+
+std::string s1 = "Hello";           // 初始化
+std::string s2("World");            // 构造
+std::string s3 = s1 + " " + s2;     // 拼接
+std::string s4 = s3.substr(0, 5);   // 子串
+
+// 常用操作
+s1.length();        // 长度
+s1.empty();         // 是否为空
+s1[0];              // 访问字符
+s1.at(0);           // 安全访问（越界会抛异常）
+s1.find("ll");      // 查找子串，返回位置或 string::npos
+s1.replace(0, 2, "He");  // 替换
+s1.insert(5, " World");  // 插入
+
+// C 字符串转换
+const char* cstr = s1.c_str();      // 转为 C 字符串
+```
+
+### 6. 数组的替代品（现代 C++）
+```cpp
+#include <array>     // 固定大小数组
+#include <vector>    // 动态数组
+
+std::array<int, 5> arr = {1, 2, 3, 4, 5};  // 固定大小，有边界检查
+std::vector<int> vec = {1, 2, 3};           // 动态大小
+vec.push_back(4);   // 添加元素
+vec.size();         // 元素个数
+vec[0];             // 访问元素
+vec.at(0);          // 安全访问
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+#include <array>
+
+int main() {
+    // C++ string 操作
+    std::string name = "Alice";
+    std::string greeting = "Hello, " + name + "!";
+    std::cout << greeting << std::endl;
+    
+    // 查找和替换
+    size_t pos = greeting.find("Alice");
+    if (pos != std::string::npos) {
+        greeting.replace(pos, 5, "Bob");
+    }
+    std::cout << greeting << std::endl;
+    
+    // vector 动态数组
+    std::vector<int> scores;
+    scores.push_back(85);
+    scores.push_back(92);
+    scores.push_back(78);
+    
+    int sum = 0;
+    for (int score : scores) {
+        sum += score;
+    }
+    std::cout << "Average: " << sum / scores.size() << std::endl;
+    
+    // array 固定大小数组（推荐替代 C 数组）
+    std::array<int, 3> coords = {10, 20, 30};
+    for (auto c : coords) {
+        std::cout << c << " ";
+    }
+    
+    return 0;
+}
+```

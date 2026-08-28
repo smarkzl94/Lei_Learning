@@ -1,0 +1,200 @@
+# 03 - auto 与类型推导
+
+## 🎯 学习目标
+- 掌握 `auto` 关键字的使用场景
+- 理解 `decltype` 的用法
+- 掌握 decltype(auto)（C++14）
+- 理解尾置返回类型
+
+---
+
+## 📚 核心知识点
+
+### 1. auto 基本用法
+```cpp
+// 基本类型推导
+auto i = 10;           // int
+auto d = 3.14;         // double
+auto s = "hello";      // const char*
+auto str = std::string("world");  // std::string
+
+// 迭代器（省去冗长的类型）
+std::vector<int> vec = {1, 2, 3};
+for (auto it = vec.begin(); it != vec.end(); ++it) {
+    std::cout << *it;
+}
+
+// 范围 for
+for (auto& x : vec) {      // auto& → int&
+    x *= 2;
+}
+for (const auto& x : vec) { // const auto& → const int&
+    std::cout << x;
+}
+```
+
+### 2. auto 的陷阱
+```cpp
+// 陷阱 1：auto 丢弃引用和 cv 限定符
+int x = 10;
+int& ref = x;
+auto a = ref;       // a 是 int，不是 int&
+auto& b = ref;      // b 是 int&
+
+const int cx = 10;
+auto c = cx;        // c 是 int（const 被丢弃）
+const auto d = cx;  // d 是 const int
+
+// 陷阱 2：auto 与 initializer_list
+auto x = {1, 2, 3};     // x 是 std::initializer_list<int>
+// auto y{1, 2, 3};     // C++17 前错误
+auto z = 1;              // z 是 int
+auto w{1};               // C++11：w 是 int；C++17：w 是 int
+
+// 陷阱 3：auto 与代理类
+std::vector<bool> vec = {true, false};
+auto elem = vec[0];     // elem 不是 bool&，而是代理类！
+auto& elem_ref = vec[0]; // 错误！不能绑定到代理类
+```
+
+### 3. decltype
+```cpp
+int x = 10;
+int& ref = x;
+const int cx = 10;
+
+decltype(x) a;       // int
+decltype(ref) b = x; // int&（必须初始化）
+decltype(cx) c = 0;  // const int
+decltype(10) d;      // int（10 是纯右值）
+
+// decltype 与表达式
+decltype(x + 3.14) e;  // double
+decltype(x = 20) f = x; // int&（赋值表达式返回左值）
+```
+
+### 4. decltype(auto)（C++14）
+```cpp
+// 完美转发返回类型
+template <typename T>
+auto& get_item(T& container, size_t index) {
+    return container[index];  // 返回引用
+}
+
+// 但 auto 会丢弃引用...
+template <typename T>
+decltype(auto) perfect_forward(T& container, size_t index) {
+    return container[index];  // 完美保留返回类型
+}
+
+// 应用
+std::vector<int> vec = {1, 2, 3};
+auto x = perfect_forward(vec, 0);      // int&
+const auto& y = perfect_forward(vec, 0); // const int&
+```
+
+### 5. 尾置返回类型
+```cpp
+// 普通写法（C++11 前）
+template <typename T, typename U>
+??? add(T a, U b) {  // 返回类型是什么？
+    return a + b;
+}
+
+// 尾置返回类型
+template <typename T, typename U>
+auto add(T a, U b) -> decltype(a + b) {
+    return a + b;
+}
+
+// C++14 后可以简化
+template <typename T, typename U>
+auto add(T a, U b) {
+    return a + b;
+}
+```
+
+### 6. 类型推导规则总结
+
+| 写法 | 推导结果 |
+|------|----------|
+| `auto x = expr` | 去掉引用和 cv |
+| `auto& x = expr` | 保留引用，去掉 cv |
+| `const auto& x = expr` | const 引用 |
+| `auto&& x = expr` | 万能引用，完美转发 |
+| `decltype(var)` | 变量声明的类型（含 cv 和引用） |
+| `decltype(expr)` | 表达式的返回类型 |
+| `decltype(auto) x = expr` | 按 decltype 规则推导 |
+
+---
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <type_traits>
+
+template <typename Container>
+decltype(auto) get_first(Container& c) {
+    return c[0];
+}
+
+int main() {
+    // auto 简化迭代器
+    std::vector<std::pair<int, std::string>> data = {
+        {1, "one"}, {2, "two"}
+    };
+    
+    for (const auto& [key, value] : data) {  // C++17 结构化绑定
+        std::cout << key << " -> " << value << std::endl;
+    }
+    
+    // decltype 检查类型
+    auto x = 10;
+    std::cout << std::is_same<decltype(x), int>::value;  // 1 (true)
+    
+    return 0;
+}
+```
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：类型推导分析
+预测以下代码中各变量的类型：
+```cpp
+int x = 10;
+int& rx = x;
+const int cx = 20;
+
+auto a = x;
+auto& b = rx;
+auto c = cx;
+const auto d = cx;
+decltype(x) e;
+decltype(rx) f = x;
+decltype(auto) g = rx;
+```
+
+### 练习 2：通用最大值函数
+用尾置返回类型实现 `max` 函数，支持不同类型比较。
+
+### 练习 3：容器访问器
+实现一个模板函数，返回容器的最后一个元素，要求：
+- 能正确处理值返回和引用返回
+- 适用于 `vector`、`array`、`string`
+
+---
+
+## ❓ 常见问题
+
+**Q: 什么时候用 `auto`，什么时候显式写类型？**
+A: 类型冗长或明显时用 `auto`（迭代器、Lambda）；类型是重要文档信息时显式写（接口、公共 API）。
+
+**Q: `auto` 和 `decltype(auto)` 有什么区别？**
+A: `auto` 按值推导（丢弃引用和 cv）；`decltype(auto)` 按 decltype 规则推导（完美保留）。
+
+**Q: 为什么 `auto x = {1, 2, 3}` 推导为 `initializer_list`？**
+A: C++11 的特殊规则。C++17 后 `auto x{1, 2, 3}` 也被禁止（防止意外）。

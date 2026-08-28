@@ -1,0 +1,245 @@
+## 📚 核心知识点
+
+### 1. 导航栈架构
+
+```
+                    ┌─────────────┐
+                    │   Goal (x,y,θ)   │
+                    └──────┬──────┘
+                           ▼
+        ┌──────────────────────────────────┐
+        │           move_base               │
+        │  ┌──────────┐    ┌──────────┐    │
+        │  │  Global  │    │  Local   │    │
+        │  │ Planner  │───►│ Planner  │    │
+        │  │ (全局路径)│    │ (避障)   │    │
+        │  └──────────┘    └────┬─────┘    │
+        │         ▲              │          │
+        │    Costmap Global   Costmap Local │
+        └──────────────────────────────────┘
+                           ▼
+                    ┌─────────────┐
+                    │  cmd_vel    │
+                    └─────────────┘
+```
+
+核心组件：
+- **move_base**：导航主节点，协调全局和局部规划
+- **global_planner**：计算从起点到终点的最优路径
+- **local_planner**：执行路径并实时避障
+- **costmap_2d**：维护全局和局部代价地图
+
+### 2. 安装和运行
+
+#### ROS1
+```bash
+# 安装
+sudo apt install ros-noetic-navigation
+
+# TurtleBot3 导航
+roslaunch turtlebot3_navigation turtlebot3_navigation.launch \\
+    map_file:=$HOME/map.yaml
+```
+
+### 3. 关键配置文件
+
+#### costmap_common_params.yaml（代价地图通用参数）
+```yaml
+# 障碍物层
+obstacle_layer:
+  enabled: true
+  obstacle_range: 3.0          # 障碍物最大检测距离
+  raytrace_range: 3.5          # 光线追踪最大距离
+  inflation_radius: 0.55       # 膨胀半径
+  
+  observation_sources: laser_scan_sensor
+  laser_scan_sensor:
+    sensor_frame: base_scan
+    data_type: LaserScan
+    topic: scan
+    marking: true              # 标记障碍物
+    clearing: true             # 清除已不存在的障碍物
+
+# 膨胀层
+inflation_layer:
+  enabled: true
+  cost_scaling_factor: 5.0     # 代价衰减因子（越大，靠近障碍物的代价越高）
+  inflation_radius: 0.55       # 膨胀半径
+
+# 机器人 footprint（轮廓）
+footprint: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]
+```
+
+#### local_costmap_params.yaml（局部代价地图）
+```yaml
+local_costmap:
+  global_frame: odom
+  robot_base_frame: base_footprint
+  update_frequency: 10.0       # 更新频率
+  publish_frequency: 10.0
+  static_map: false            # 不使用静态地图
+  rolling_window: true         # 滚动窗口（跟随机器人）
+  width: 3.0                   # 地图宽度
+  height: 3.0
+  resolution: 0.05
+```
+
+#### global_costmap_params.yaml（全局代价地图）
+```yaml
+global_costmap:
+  global_frame: map
+  robot_base_frame: base_footprint
+  update_frequency: 1.0
+  publish_frequency: 1.0
+  static_map: true             # 使用静态地图
+  rolling_window: false
+```
+
+#### move_base_params.yaml
+```yaml
+# 规划器选择
+base_global_planner: "navfn/NavfnROS"        # 或 "global_planner/GlobalPlanner"
+base_local_planner: "dwa_local_planner/DWAPlannerROS"  # 或 "base_local_planner/TrajectoryPlannerROS"
+
+# 目标容忍
+xy_goal_tolerance: 0.1        # 位置容差（米）
+yaw_goal_tolerance: 0.1       # 角度容差（弧度）
+
+# 频率
+controller_frequency: 10.0
+planner_frequency: 5.0
+```
+
+#### DWA 局部规划器参数
+```yaml
+DWAPlannerROS:
+  max_vel_x: 0.22             # 最大线速度
+  min_vel_x: -0.22            # 最小线速度（允许后退）
+  max_vel_y: 0.0              # 差速机器人无 y 方向速度
+  max_vel_trans: 0.22
+  min_vel_trans: 0.1
+  max_vel_theta: 2.84         # 最大角速度
+  min_vel_theta: 0.9
+  
+  acc_lim_x: 2.5              # 线加速度限制
+  acc_lim_y: 0.0
+  acc_lim_theta: 3.2          # 角加速度限制
+  
+  sim_time: 1.5               # 前向模拟时间
+  vx_samples: 20              # x 速度采样数
+  vtheta_samples: 40          # 角速度采样数
+  
+  goal_distance_bias: 24.0    # 目标距离权重
+  path_distance_bias: 32.0    # 路径跟踪权重
+  occdist_scale: 0.01         # 避障权重
+```
+
+### 4. 发送导航目标
+
+#### 命令行
+```bash
+# 使用 RViz 的 "2D Nav Goal" 工具
+
+# 或命令行发布
+ostopic pub /move_base_simple/goal geometry_msgs/PoseStamped "{header: {frame_id: 'map'}, pose: {position: {x: 1.0, y: 2.0}, orientation: {w: 1.0}}}"
+```
+
+#### C++ 代码
+```cpp
+#include <ros/ros.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
+
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "nav_goal_sender");
+    
+    MoveBaseClient ac("move_base", true);
+    ac.waitForServer();
+    
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    
+    goal.target_pose.pose.position.x = 1.0;
+    goal.target_pose.pose.position.y = 2.0;
+    goal.target_pose.pose.orientation.w = 1.0;
+    
+    ac.sendGoal(goal);
+    ac.waitForResult();
+    
+    if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("Goal reached!");
+    } else {
+        ROS_WARN("Failed to reach goal");
+    }
+    
+    return 0;
+}
+```
+
+### 5. 导航状态
+
+```cpp
+// 获取导航状态
+ac.getState().toString();
+
+// 可能的状态：
+// PENDING    - 等待执行
+// ACTIVE     - 正在执行
+// PREEMPTED  - 被抢占/取消
+// SUCCEEDED  - 成功到达
+// ABORTED    - 失败/中止
+// REJECTED   - 被拒绝
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：RViz 中导航
+```bash
+# 启动仿真
+roslaunch turtlebot3_gazebo turtlebot3_world.launch
+
+# 启动导航
+roslaunch turtlebot3_navigation turtlebot3_navigation.launch \\
+    map_file:=$HOME/map.yaml
+```
+
+1. 用 "2D Pose Estimate" 定位机器人
+2. 用 "2D Nav Goal" 设置目标点
+3. 观察路径规划和执行过程
+
+### 实验 2：多点巡逻
+编写程序让机器人在几个预设点之间循环导航。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：参数调优
+调整 DWA 规划器的速度限制和权重参数，观察对导航行为的影响。
+
+### 练习 2：动态避障
+在 Gazebo 中动态添加障碍物，观察局部规划器的避障行为。
+
+### 练习 3：导航失败处理
+编写健壮的导航程序，处理各种失败情况：
+- 目标不可达
+- 路径被阻塞
+- 超时重试
+
+---
+
+## ❓ 常见问题
+
+**Q: 机器人原地旋转不前进？**
+A: 通常是局部规划器参数问题。检查 `sim_time` 是否太短，`path_distance_bias` 是否太低。
+
+**Q: 导航时撞到障碍物？**
+A: 增大 `inflation_radius`，确保 footprint 准确，降低最大速度。
+
+**Q: 全局路径很奇怪？**
+A: 检查代价地图的膨胀层参数，可能是膨胀半径太大导致只能走窄路。

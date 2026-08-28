@@ -1,0 +1,216 @@
+# 04 - 节点管理与 Launch 文件
+
+## 🎯 学习目标
+- 掌握 launch 文件的编写
+- 理解节点命名和重映射
+- 掌握参数设置和加载
+
+---
+
+## 📚 核心知识点
+
+### 1. ROS1 Launch 文件
+
+Launch 文件用于一次性启动多个节点、设置参数。
+
+```xml
+<!-- launch/my_launch.launch -->
+<launch>
+  <!-- 设置参数 -->
+  <param name="robot_name" value="my_robot" />
+  
+  <!-- 加载参数文件 -->
+  <rosparam file="$(find my_pkg)/config/params.yaml" command="load" />
+  
+  <!-- 启动节点 -->
+  <node pkg="turtlesim" type="turtlesim_node" name="sim" />
+  
+  <!-- 带重映射的节点 -->
+  <node pkg="turtlesim" type="turtle_teleop_key" name="teleop">
+    <remap from="/turtle1/cmd_vel" to="/robot/cmd_vel" />
+  </node>
+  
+  <!-- 命名空间 -->
+  <group ns="robot1">
+    <node pkg="my_pkg" type="my_node" name="controller" />
+  </group>
+  
+  <!-- 条件启动 -->
+  <arg name="use_sim" default="true" />
+  <group if="$(arg use_sim)">
+    <node pkg="gazebo_ros" type="gazebo" name="gazebo" />
+  </group>
+</launch>
+```
+
+#### 运行 Launch
+```bash
+roslaunch my_pkg my_launch.launch
+roslaunch my_pkg my_launch.launch use_sim:=false  # 传参数
+```
+
+### 2. ROS2 Launch 文件
+
+ROS2 支持 Python、XML、YAML 三种格式。
+
+#### Python 格式（推荐）
+```python
+# launch/my_launch.py
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument('use_sim', default_value='true'),
+        
+        Node(
+            package='turtlesim',
+            executable='turtlesim_node',
+            name='sim',
+            parameters=[{'background_r': 150}]
+        ),
+        
+        Node(
+            package='turtlesim',
+            executable='turtle_teleop_key',
+            name='teleop',
+            remappings=[
+                ('/turtle1/cmd_vel', '/robot/cmd_vel')
+            ]
+        ),
+        
+        Node(
+            package='my_pkg',
+            executable='my_node',
+            name='controller',
+            namespace='robot1'
+        ),
+    ])
+```
+
+#### XML 格式
+```xml
+<!-- launch/my_launch.xml -->
+<launch>
+  <arg name="use_sim" default="true" />
+  
+  <node pkg="turtlesim" exec="turtlesim_node" name="sim">
+    <param name="background_r" value="150" />
+  </node>
+  
+  <node pkg="turtlesim" exec="turtle_teleop_key" name="teleop">
+    <remap from="/turtle1/cmd_vel" to="/robot/cmd_vel" />
+  </node>
+</launch>
+```
+
+#### 运行 Launch
+```bash
+ros2 launch my_pkg my_launch.py
+ros2 launch my_pkg my_launch.xml
+ros2 launch my_pkg my_launch.py use_sim:=false
+```
+
+### 3. 参数设置
+
+#### ROS1
+```xml
+<!-- 在 launch 中设置 -->
+<param name="max_speed" value="1.0" />
+<param name="robot_name" value="turtle1" />
+
+<!-- 在节点内设置 -->
+<node pkg="my_pkg" type="my_node" name="my_node">
+  <param name="kp" value="0.5" />
+  <param name="ki" value="0.1" />
+</node>
+
+<!-- 加载 YAML -->
+<rosparam file="$(find my_pkg)/config/controller.yaml" command="load" />
+```
+
+#### YAML 参数文件
+```yaml
+# config/controller.yaml
+controller:
+  kp: 0.5
+  ki: 0.1
+  kd: 0.05
+  
+limits:
+  max_velocity: 1.0
+  max_acceleration: 2.0
+```
+
+#### 代码中读取参数
+```cpp
+// ROS1
+ros::NodeHandle nh("~");  // 私有命名空间
+double kp;
+nh.param("kp", kp, 0.5);  // 带默认值
+
+// ROS2
+node->declare_parameter("kp", 0.5);
+double kp = node->get_parameter("kp").as_double();
+```
+
+### 4. 节点重映射
+
+```bash
+# 命令行重映射
+rosrun turtlesim turtlesim_node __name:=my_turtle
+rosrun turtlesim turtle_teleop_key turtle1/cmd_vel:=robot/cmd_vel
+
+# launch 文件重映射
+<remap from="turtle1/cmd_vel" to="robot/cmd_vel" />
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：创建 Launch 文件
+创建 launch 文件同时启动 turtlesim 和键盘控制节点。
+
+### 实验 2：参数实验
+1. 创建参数文件
+2. 在 launch 中加载
+3. 在节点中读取并使用
+
+### 实验 3：多机器人仿真
+使用命名空间启动两组 turtlesim + teleop，观察它们互不干扰。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：参数化 Launch
+创建一个 launch 文件，支持通过参数控制：
+- 是否启动 Gazebo
+- 机器人初始位置
+- 控制器参数
+
+### 练习 2：参数动态重配置
+使用 `dynamic_reconfigure`（ROS1）或 `rclcpp::ParameterEventHandler`（ROS2）实现运行时参数修改。
+
+### 练习 3：复杂 Launch 结构
+组织多个 launch 文件：
+- `robot.launch`：启动机器人相关
+- `sensors.launch`：启动传感器
+- `navigation.launch`：启动导航
+- `main.launch`：包含以上所有
+
+---
+
+## ❓ 常见问题
+
+**Q: Launch 文件找不到包？**
+A: 使用 `$(find pkg_name)` 来定位包路径，不要用绝对路径。
+
+**Q: 节点启动顺序怎么控制？**
+A: ROS 没有内置的启动顺序控制。可用 `launch` 的 `LaunchDescription` 中的顺序，或节点内等待服务/话题就绪。
+
+**Q: 如何只启动部分节点？**
+A: 使用 `<arg>` 和条件判断，或创建多个 launch 文件组合使用。

@@ -1,0 +1,141 @@
+## 📚 核心知识点
+
+### 1. 容器概览
+
+| 容器 | 底层结构 | 随机访问 | 头部插入 | 尾部插入 | 中间插入 | 适用场景 |
+|------|----------|----------|----------|----------|----------|----------|
+| `array` | 固定数组 | O(1) | - | - | - | 大小固定 |
+| `vector` | 动态数组 | O(1) | O(n) | 均摊 O(1) | O(n) | 默认选择 |
+| `deque` | 分块数组 | O(1) | O(1) | O(1) | O(n) | 双端操作 |
+| `list` | 双向链表 | - | O(1) | O(1) | O(1) | 频繁中间插入 |
+| `forward_list` | 单向链表 | - | - | O(1) | O(1) | 内存敏感 |
+
+### 2. vector（最常用）
+```cpp
+#include <vector>
+
+std::vector<int> v;           // 空 vector
+std::vector<int> v2(10);       // 10 个 0
+std::vector<int> v3(10, 5);    // 10 个 5
+std::vector<int> v4 = {1,2,3}; // 列表初始化
+
+// 添加元素
+v.push_back(10);        // 尾部添加
+v.emplace_back(20);     // 原地构造（C++11，更高效）
+v.insert(v.begin(), 5); // 指定位置插入
+
+// 访问元素
+v[0];           // 不检查越界
+v.at(0);        // 检查越界，越界抛异常
+v.front();      // 首元素
+v.back();       // 尾元素
+v.data();       // 返回底层数组指针
+
+// 容量操作
+v.size();       // 元素个数
+v.capacity();   // 容量（不重新分配可容纳的元素数）
+v.empty();      // 是否为空
+v.reserve(100); // 预分配空间
+v.shrink_to_fit(); // 释放多余容量（C++11）
+
+// 删除
+v.pop_back();           // 删除尾部
+v.erase(v.begin());     // 删除指定位置
+v.erase(v.begin(), v.end()); // 删除区间
+v.clear();              // 清空
+```
+
+### 3. list（双向链表）
+```cpp
+#include <list>
+
+std::list<int> lst = {1, 2, 3, 4, 5};
+
+// list 特有操作
+lst.push_front(0);      // 头部添加
+lst.pop_front();        // 头部删除
+lst.sort();             // list 自己的 sort（不是 std::sort）
+lst.reverse();          // 反转
+lst.unique();           // 去重（相邻重复）
+
+// 拼接（O(1)）
+std::list<int> lst2 = {6, 7, 8};
+lst.splice(lst.end(), lst2);  // 将 lst2 所有元素移到 lst 末尾
+```
+
+### 4. deque（双端队列）
+```cpp
+#include <deque>
+
+std::deque<int> dq;
+
+dq.push_back(1);   // 尾部添加
+dq.push_front(2);  // 头部添加（O(1)，vector 做不到）
+dq.pop_back();     // 尾部删除
+dq.pop_front();    // 头部删除（O(1)，vector 做不到）
+
+// 支持随机访问，但比 vector 略慢
+dq[0];
+dq.at(0);
+```
+
+### 5. array（固定大小数组）
+```cpp
+#include <array>
+
+std::array<int, 5> arr = {1, 2, 3, 4, 5};
+
+arr.size();      // 5（编译期确定）
+arr[0];
+arr.at(0);
+arr.fill(10);    // 所有元素设为 10
+
+// 与 C 数组对比的优势：有边界检查、支持 STL 算法、可以拷贝
+```
+
+---
+
+
+## 💻 代码示例
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <list>
+
+int main() {
+    // vector 常用操作
+    std::vector<int> nums;
+    nums.reserve(100);  // 预分配，避免多次重新分配
+    
+    for (int i = 0; i < 10; ++i) {
+        nums.push_back(i);
+    }
+    
+    // 范围 for 遍历
+    for (const auto& n : nums) {
+        std::cout << n << " ";
+    }
+    std::cout << std::endl;
+    
+    // 删除偶数（注意迭代器失效问题）
+    for (auto it = nums.begin(); it != nums.end(); ) {
+        if (*it % 2 == 0) {
+            it = nums.erase(it);  // erase 返回下一个有效迭代器
+        } else {
+            ++it;
+        }
+    }
+    
+    // 列表 splice 示例
+    std::list<int> list1 = {1, 2, 3};
+    std::list<int> list2 = {4, 5, 6};
+    auto it = list1.begin();
+    ++it;  // 指向 2
+    list1.splice(it, list2);  // 将 list2 全部插入到 2 之前
+    // list1: 1, 4, 5, 6, 2, 3
+    // list2: 空
+    
+    return 0;
+}
+```

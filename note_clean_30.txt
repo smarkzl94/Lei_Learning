@@ -1,0 +1,153 @@
+## 📚 核心知识点
+
+### 1. 工作空间（Workspace）
+
+工作空间是 ROS 项目的根目录，包含所有代码、编译结果和配置文件。
+
+#### ROS1 工作空间结构
+```
+~/catkin_ws/
+├── build/              # 编译中间文件（自动生成）
+│   └── ...
+├── devel/              # 编译结果、环境配置（自动生成）
+│   ├── setup.bash      # 环境配置脚本
+│   ├── lib/            # 可执行文件和库
+│   └── share/          # 包的数据文件
+└── src/                # 源代码（用户创建）
+    ├── CMakeLists.txt  # catkin 顶层配置文件
+    └── [功能包...]
+```
+
+#### ROS2 工作空间结构
+```
+~/ros2_ws/
+├── build/              # 编译中间文件
+├── install/            # 安装目录（替代 devel）
+│   ├── setup.bash
+│   └── [包名...]
+├── log/                # 编译日志
+└── src/                # 源代码
+    └── [功能包...]
+```
+
+### 2. 创建和编译工作空间
+
+#### ROS1
+```bash
+# 创建
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+catkin_init_workspace    # 初始化（可选）
+
+# 编译
+cd ~/catkin_ws
+catkin_make              # 基本编译
+catkin_make -j4          # 4 线程并行编译
+catkin_make --force-cmake-configure  # 强制重新配置
+
+# 配置环境
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### ROS2
+```bash
+# 创建
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws
+
+# 编译
+colcon build
+colcon build --packages-select my_package   # 只编译指定包
+colcon build --symlink-install              # 符号链接安装（开发时推荐）
+colcon test                                 # 运行测试
+
+# 配置环境
+echo "source ~/ros2_ws/install/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 3. Overlay 工作空间
+
+可以叠加多个工作空间，后面的覆盖前面的：
+
+```bash
+# 先加载系统 ROS
+source /opt/ros/noetic/setup.bash
+
+# 再加载自己的工作空间（overlay）
+source ~/catkin_ws/devel/setup.bash
+
+# 此时 ~/catkin_ws 的包会覆盖系统同名包
+echo $ROS_PACKAGE_PATH
+# 输出: /home/user/catkin_ws/src:/opt/ros/noetic/share
+```
+
+### 4. 环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `ROS_PACKAGE_PATH` | 包搜索路径 |
+| `ROS_ROOT` | ROS 安装路径 |
+| `ROS_DISTRO` | ROS 版本 |
+| `CMAKE_PREFIX_PATH` | CMake 查找路径 |
+
+---
+
+## 💻 动手实验
+
+```bash
+# 创建新工作空间
+mkdir -p ~/test_ws/src
+cd ~/test_ws/src
+catkin_init_workspace
+
+# 编译空工作空间
+cd ~/test_ws
+catkin_make
+
+# 查看生成的文件
+ls build/
+ls devel/
+
+# 加载环境
+source devel/setup.bash
+
+# 查看包路径
+echo $ROS_PACKAGE_PATH
+```
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：多工作空间实验
+创建两个工作空间 ws1 和 ws2，在同名包中放入不同内容，测试 overlay 效果。
+
+### 练习 2：环境切换脚本
+编写一个 shell 脚本，方便在不同工作空间之间切换。
+
+### 练习 3：clean 和 rebuild
+```bash
+# ROS1
+catkin_make clean      # 清理编译结果
+rm -rf build devel     # 彻底清理
+catkin_make            # 重新编译
+
+# ROS2
+rm -rf build install log
+colcon build
+```
+
+---
+
+## ❓ 常见问题
+
+**Q: `catkin_make` 和 `catkin build` 有什么区别？**
+A: `catkin_make` 是早期工具，编译整个工作空间；`catkin build`（catkin_tools）更现代，支持独立编译每个包。
+
+**Q: 为什么修改了代码但运行结果没变？**
+A: 检查：1) 是否重新编译；2) 是否 source 了正确的 setup.bash；3) 是否用了 `rosrun` 找到正确路径。
+
+**Q: devel 和 install 有什么区别？**
+A: `devel` 是开发空间，文件分散在包目录；`install` 是安装空间，文件按标准目录结构组织（bin、lib、share 等）。

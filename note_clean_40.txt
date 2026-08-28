@@ -1,0 +1,194 @@
+## 📚 核心知识点
+
+### 1. Gazebo 简介
+
+Gazebo 是 ROS 配套的物理仿真器：
+- **物理引擎**：ODE、Bullet、Simbody、DART
+- **传感器仿真**：摄像头、激光雷达、IMU、力传感器等
+- **环境模拟**：光照、重力、摩擦力
+- **场景**：室内、室外、自定义世界
+
+### 2. 启动 Gazebo
+
+```bash
+# 空世界
+roslaunch gazebo_ros empty_world.launch
+
+# TurtleBot3 仿真
+roslaunch turtlebot3_gazebo turtlebot3_world.launch
+
+# ROS2
+ros2 launch gazebo_ros gazebo.launch.py
+```
+
+### 3. Gazebo 插件
+
+#### 差速驱动插件
+```xml
+<!-- URDF 中的 Gazebo 插件 -->
+<gazebo>
+  <plugin name="differential_drive_controller" 
+          filename="libgazebo_ros_diff_drive.so">
+    <legacyMode>false</legacyMode>
+    <alwaysOn>true</alwaysOn>
+    <updateRate>50</updateRate>
+    <leftJoint>wheel_left_joint</leftJoint>
+    <rightJoint>wheel_right_joint</rightJoint>
+    <wheelSeparation>0.354</wheelSeparation>
+    <wheelDiameter>0.194</wheelDiameter>
+    <torque>20</torque>
+    <commandTopic>cmd_vel</commandTopic>
+    <odometryTopic>odom</odometryTopic>
+    <odometryFrame>odom</odometryFrame>
+    <robotBaseFrame>base_footprint</robotBaseFrame>
+    <publishWheelTF>false</publishWheelTF>
+    <publishOdomTF>true</publishOdomTF>
+  </plugin>
+</gazebo>
+```
+
+#### 激光雷达插件
+```xml
+<gazebo reference="base_scan">
+  <sensor type="ray" name="lds_lfcd_sensor">
+    <plugin name="gazebo_ros_lds_lfcd_controller" 
+            filename="libgazebo_ros_laser.so">
+      <topicName>scan</topicName>
+      <frameName>base_scan</frameName>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+#### 摄像头插件
+```xml
+<gazebo reference="camera_link">
+  <sensor type="camera" name="camera">
+    <plugin name="camera_controller" 
+            filename="libgazebo_ros_camera.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>30.0</updateRate>
+      <cameraName>camera</cameraName>
+      <imageTopicName>image_raw</imageTopicName>
+      <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+      <frameName>camera_link</frameName>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### 4. 世界文件（.world）
+
+```xml
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="my_world">
+    <!-- 物理属性 -->
+    <physics type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+    </physics>
+    
+    <!-- 场景 -->
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>true</shadows>
+    </scene>
+    
+    <!-- 地面 -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+    <!-- 太阳 -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    
+    <!-- 自定义模型 -->
+    <model name="my_obstacle">
+      <pose>2 2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>1 1 1</size></box>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>
+```
+
+### 5. Gazebo 命令
+
+```bash
+# 暂停/继续仿真（GUI 中的空格键）
+# 逐步仿真
+
+# 命令行工具
+rostopic pub /gazebo/set_physics_properties gazebo_msgs/PhysicsProperties ...
+
+# 生成模型
+rosservice call /gazebo/spawn_urdf_model ...
+rosservice call /gazebo/spawn_sdf_model ...
+
+# 删除模型
+rosservice call /gazebo/delete_model "model_name: 'my_robot'"
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：运行 TurtleBot3 仿真
+```bash
+export TURTLEBOT3_MODEL=waffle
+roslaunch turtlebot3_gazebo turtlebot3_world.launch
+```
+
+用键盘控制机器人移动，观察传感器数据。
+
+### 实验 2：自定义世界
+创建一个包含墙壁和障碍物的世界文件，加载到 Gazebo 中。
+
+### 实验 3：传感器测试
+在 Gazebo 中：
+1. 查看激光雷达数据（RViz）
+2. 查看摄像头图像（rqt_image_view）
+3. 查看里程计数据（rostopic echo /odom）
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：迷宫世界
+创建一个迷宫世界，在 Gazebo 中运行机器人，手动控制走出迷宫。
+
+### 练习 2：传感器标定
+通过修改 URDF 中的传感器参数（位置、角度范围），理解参数对数据的影响。
+
+### 练习 3：动态障碍物
+编写节点在 Gazebo 中动态添加和删除障碍物模型。
+
+---
+
+## ❓ 常见问题
+
+**Q: Gazebo 启动慢？**
+A: 第一次启动会下载模型，耐心等待。可以在 `~/.gazebo/models` 中预置常用模型。
+
+**Q: 机器人在 Gazebo 中漂移？**
+A: 检查 URDF 中的质量、惯性参数是否合理。质量太小或惯性矩阵不合理会导致不稳定。
+
+**Q: 仿真和真实机器人的区别？**
+A: 仿真理想化了物理（完美的传感器、精确的模型），真实环境有噪声、延迟和未建模动态。算法在仿真中验证后需要在真实环境中调参。

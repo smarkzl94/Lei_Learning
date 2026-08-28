@@ -1,0 +1,194 @@
+## 📚 核心知识点
+
+### 1. TF 简介
+
+TF (Transform) 是 ROS 中的坐标变换系统：
+- 维护机器人各部件之间的坐标关系
+- 形成一棵树结构（`map` → `odom` → `base_link` → `sensor_link`）
+- 支持时间相关的变换查询
+
+```
+map (世界坐标系)
+  └── odom (里程计坐标系)
+        └── base_link (机器人本体)
+              ├── laser_link (激光雷达)
+              ├── camera_link (摄像头)
+              └── wheel_left_link (左轮)
+```
+
+### 2. 查看 TF 树
+
+```bash
+# 查看 TF 树
+rosrun rqt_tf_tree rqt_tf_tree
+
+# 命令行查看
+rosrun tf tf_echo /base_link /laser_link
+
+# 查看所有变换
+rosrun tf view_frames  # 生成 PDF 文件
+```
+
+### 3. 发布静态 TF
+
+```bash
+# 命令行
+rosrun tf static_transform_publisher 0.5 0 0.3 0 0 0 base_link laser_link 100
+
+# 格式：x y z yaw pitch pitch roll frame_id child_frame_id period(ms)
+```
+
+```xml
+<!-- launch 文件 -->
+<node pkg="tf" type="static_transform_publisher" name="laser_tf"
+      args="0.5 0 0.3 0 0 0 base_link laser_link 100" />
+```
+
+### 4. 动态 TF（C++）
+
+```cpp
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "tf_broadcaster");
+    ros::NodeHandle nh;
+    
+    tf::TransformBroadcaster broadcaster;
+    ros::Rate rate(100);  // 100 Hz
+    
+    while (nh.ok()) {
+        tf::Transform transform;
+        transform.setOrigin(tf::Vector3(0.5, 0.0, 0.3));
+        tf::Quaternion q;
+        q.setRPY(0, 0, 0);  // roll, pitch, yaw
+        transform.setRotation(q);
+        
+        broadcaster.sendTransform(
+            tf::StampedTransform(transform, ros::Time::now(),
+                                "base_link", "laser_link"));
+        
+        rate.sleep();
+    }
+    
+    return 0;
+}
+```
+
+### 5. 监听 TF 变换
+
+```cpp
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "tf_listener");
+    ros::NodeHandle nh;
+    
+    tf::TransformListener listener;
+    ros::Rate rate(10);
+    
+    while (nh.ok()) {
+        tf::StampedTransform transform;
+        try {
+            listener.lookupTransform("base_link", "laser_link",
+                                    ros::Time(0), transform);
+            
+            ROS_INFO("Translation: (%.2f, %.2f, %.2f)",
+                     transform.getOrigin().x(),
+                     transform.getOrigin().y(),
+                     transform.getOrigin().z());
+        }
+        catch (tf::TransformException& ex) {
+            ROS_ERROR("%s", ex.what());
+        }
+        
+        rate.sleep();
+    }
+    
+    return 0;
+}
+```
+
+### 6. TF2（推荐）
+
+TF2 是 TF 的改进版，API 更简洁，功能更强大。
+
+```cpp
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2/LinearMath/Quaternion.h>
+
+// 发布
+tf2_ros::TransformBroadcaster broadcaster;
+geometry_msgs::TransformStamped transform;
+transform.header.stamp = ros::Time::now();
+transform.header.frame_id = "base_link";
+transform.child_frame_id = "laser_link";
+transform.transform.translation.x = 0.5;
+transform.transform.rotation.w = 1.0;
+broadcaster.sendTransform(transform);
+
+// 监听
+tf2_ros::Buffer buffer;
+tf2_ros::TransformListener listener(buffer);
+geometry_msgs::TransformStamped transform = 
+    buffer.lookupTransform("base_link", "laser_link", ros::Time(0));
+```
+
+### 7. 坐标变换计算
+
+```cpp
+// 将点从 laser 坐标系转换到 base_link
+geometry_msgs::PointStamped laser_point;
+laser_point.header.frame_id = "laser_link";
+laser_point.point.x = 1.0;
+laser_point.point.y = 0.0;
+laser_point.point.z = 0.0;
+
+geometry_msgs::PointStamped base_point;
+listener.transformPoint("base_link", laser_point, base_point);
+```
+
+---
+
+## 💻 动手实验
+
+### 实验 1：查看 Turtle 的 TF
+```bash
+roslaunch turtlebot3_fake turtlebot3_fake.launch
+rosrun rqt_tf_tree rqt_tf_tree
+rosrun tf tf_echo /base_link /laser
+```
+
+### 实验 2：发布自定义 TF
+编写节点发布一个围绕 base_link 旋转的 frame。
+
+### 实验 3：坐标变换
+编写节点接收 laser 坐标系中的点，转换到 map 坐标系并输出。
+
+---
+
+## ✏️ 练习任务
+
+### 练习 1：传感器标定
+给定激光雷达在机器人上的安装位置，发布正确的 TF，验证点云在 base_link 坐标系中的位置。
+
+### 练习 2：多机器人 TF
+为两台机器人设置不同的命名空间，确保它们的 TF 树互不干扰。
+
+### 练习 3：TF 异常处理
+编写健壮的 TF 查询代码，处理各种异常情况（超时、变换不存在等）。
+
+---
+
+## ❓ 常见问题
+
+**Q: TF 树为什么必须是树结构？**
+A: 确保任意两个坐标系之间有唯一变换路径。如果有环，变换不唯一。
+
+**Q: `ros::Time(0)` 和 `ros::Time::now()` 的区别？**
+A: `Time(0)` 获取最新可用变换；`now()` 获取当前时刻的变换（可能需等待）。
+
+**Q: TF 发布频率设多少合适？**
+A: 通常 50-100Hz。静态变换可用 `static_transform_publisher` 或 `/tf_static`。
