@@ -1,16 +1,21 @@
 # 03 - auto 与类型推导
 
 ## 🎯 学习目标
-- 掌握 `auto` 关键字的使用场景
-- 理解 `decltype` 的用法
-- 掌握 decltype(auto)（C++14）
-- 理解尾置返回类型
 
----
+* 掌握 `auto` 关键字的使用场景
+
+* 理解 `decltype` 的用法
+
+* 掌握 decltype(auto)（C++14）
+
+* 理解尾置返回类型
+
+***
 
 ## 📚 核心知识点
 
 ### 1. auto 基本用法
+
 ```cpp
 // 基本类型推导
 auto i = 10;           // int
@@ -34,6 +39,7 @@ for (const auto& x : vec) { // const auto& → const int&
 ```
 
 ### 2. auto 的陷阱
+
 ```cpp
 // 陷阱 1：auto 丢弃引用和 cv 限定符
 int x = 10;
@@ -58,6 +64,7 @@ auto& elem_ref = vec[0]; // 错误！不能绑定到代理类
 ```
 
 ### 3. decltype
+
 ```cpp
 int x = 10;
 int& ref = x;
@@ -74,6 +81,7 @@ decltype(x = 20) f = x; // int&（赋值表达式返回左值）
 ```
 
 ### 4. decltype(auto)（C++14）
+
 ```cpp
 // 完美转发返回类型
 template <typename T>
@@ -94,6 +102,7 @@ const auto& y = perfect_forward(vec, 0); // const int&
 ```
 
 ### 5. 尾置返回类型
+
 ```cpp
 // 普通写法（C++11 前）
 template <typename T, typename U>
@@ -116,17 +125,17 @@ auto add(T a, U b) {
 
 ### 6. 类型推导规则总结
 
-| 写法 | 推导结果 |
-|------|----------|
-| `auto x = expr` | 去掉引用和 cv |
-| `auto& x = expr` | 保留引用，去掉 cv |
-| `const auto& x = expr` | const 引用 |
-| `auto&& x = expr` | 万能引用，完美转发 |
-| `decltype(var)` | 变量声明的类型（含 cv 和引用） |
-| `decltype(expr)` | 表达式的返回类型 |
-| `decltype(auto) x = expr` | 按 decltype 规则推导 |
+| 写法                        | 推导结果              |
+| ------------------------- | ----------------- |
+| `auto x = expr`           | 去掉引用和 cv          |
+| `auto& x = expr`          | 保留引用，去掉 cv        |
+| `const auto& x = expr`    | const 引用          |
+| `auto&& x = expr`         | 万能引用，完美转发         |
+| `decltype(var)`           | 变量声明的类型（含 cv 和引用） |
+| `decltype(expr)`          | 表达式的返回类型          |
+| `decltype(auto) x = expr` | 按 decltype 规则推导   |
 
----
+***
 
 ## 💻 代码示例
 
@@ -158,12 +167,14 @@ int main() {
 }
 ```
 
----
+***
 
 ## ✏️ 练习任务
 
 ### 练习 1：类型推导分析
+
 预测以下代码中各变量的类型：
+
 ```cpp
 int x = 10;
 int& rx = x;
@@ -179,14 +190,18 @@ decltype(auto) g = rx;
 ```
 
 ### 练习 2：通用最大值函数
+
 用尾置返回类型实现 `max` 函数，支持不同类型比较。
 
 ### 练习 3：容器访问器
-实现一个模板函数，返回容器的最后一个元素，要求：
-- 能正确处理值返回和引用返回
-- 适用于 `vector`、`array`、`string`
 
----
+实现一个模板函数，返回容器的最后一个元素，要求：
+
+* 能正确处理值返回和引用返回
+
+* 适用于 `vector`、`array`、`string`
+
+***
 
 ## ❓ 常见问题
 
