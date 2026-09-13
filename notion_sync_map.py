@@ -63,7 +63,26 @@ ROS_PAGE_IDS = {
     "机械臂运动规划": "3c9503fb-d69f-8111-a0c2-e5b677fb4f4f",
 }
 
-ALL_PAGE_IDS = {**CPP_PAGE_IDS, **ROS_PAGE_IDS}
+PYTORCH_PAGE_IDS = {
+    "张量与运算": "3d9503fb-d69f-813e-8c7b-f7af8c53572d",
+    "自动求导": "3d9503fb-d69f-81d2-84ed-c18ce704a465",
+    "nn_Module": "3d9503fb-d69f-8114-a0e3-c5b5c6f0ca0b",
+    "训练流程": "3d9503fb-d69f-812e-adf5-f6ac38587be3",
+    "Dataset与DataLoader": "3d9503fb-d69f-81e3-a523-c7185a7e1b20",
+    "数据增强": "3d9503fb-d69f-81d5-a85b-ed832f0bd285",
+    "CNN基础": "3d9503fb-d69f-8138-a002-cab983ad1a17",
+    "图像分类实战": "3d9503fb-d69f-81b5-8de9-c17476ea285c",
+    "RNN与LSTM": "3d9503fb-d69f-81c1-9d74-d8a66234549e",
+    "Transformer基础": "3d9503fb-d69f-818a-acbb-d8e9f3e20fbb",
+    "MNIST分类": "3d9503fb-d69f-812b-96da-c4ddbcbdc9ab",
+    "目标检测入门": "3d9503fb-d69f-8112-8f4c-c04a8b817808",
+    "强化学习基础": "3d9503fb-d69f-8164-8ef3-d43d01ca6aa5",
+    "DQN": "3d9503fb-d69f-8131-810f-c3bc42a52b03",
+    "PPO": "3d9503fb-d69f-8108-83b3-d31bd5cc8d0b",
+    "机器人强化学习": "3d9503fb-d69f-81a0-8ac6-e19cae24d101",
+}
+
+ALL_PAGE_IDS = {**CPP_PAGE_IDS, **ROS_PAGE_IDS, **PYTORCH_PAGE_IDS}
 
 # Filename to key mapping (extract knowledge point name from filename)
 import os, glob, json
@@ -81,7 +100,7 @@ def get_key_from_path(path):
 if __name__ == '__main__':
     base = os.path.dirname(os.path.abspath(__file__))
     files = []
-    for pattern in [os.path.join(base, 'C++学习', '**', '*.md'), os.path.join(base, 'ROS学习', '**', '*.md')]:
+    for pattern in [os.path.join(base, 'C++学习', '**', '*.md'), os.path.join(base, 'ROS学习', '**', '*.md'), os.path.join(base, 'PyTorch学习', '**', '*.md')]:
         for p in sorted(glob.glob(pattern, recursive=True)):
             if os.path.basename(p) == 'README.md':
                 continue
