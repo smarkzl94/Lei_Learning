@@ -119,4 +119,41 @@ rqt_graph           # 看节点关系图
 
 > 以下由学习过程中追加（格式同 [知识盲区](../知识盲区.md)）
 
-（暂无）
+### ROS2 节点一生 · 五步链（建包→编译→运行全链路）
+
+- **类型**：流程梳理
+- **发现日期**：2026-09-16
+- **关联知识点**：ROS 02 章 工作空间与功能包（03 创建功能包 / 04 launch）
+
+**问题描述**：
+建包、写代码、colcon build、source、ros2 run 分开看都懂，但串不起来——不知道每一步的产物是什么、出错该回查哪一步。
+
+**正解/笔记**：
+
+```
+① 建包    ros2 pkg create my_package --build-type ament_cmake --node-name my_node
+          └─→ 在 src/ 下生成  package.xml + CMakeLists.txt + src/my_node.cpp
+
+② 写代码  编辑 my_node.cpp（init → Node → 循环 → shutdown）
+
+③ 编译    colcon build
+          └─→ 读两个配置文件 → 编译 → 放进 install/
+
+④ 注册    source install/setup.bash
+          └─→ 告诉终端：my_package 的存在、my_node 的路径（每个新终端都要！）
+
+⑤ 运行    ros2 run my_package my_node
+          └─→ 从 install/lib/my_package/ 找到可执行文件，启动节点
+```
+
+**排错对照表**：
+
+| 现象 | 回查步骤 |
+|------|---------|
+| ros2 run 找不到包 | ④ source（99% 是这个） |
+| 编译报错 | ② 代码 或 ① 的 package.xml / CMakeLists.txt |
+| 节点启动无反应 | ⑤ spin 漏写 / 话题没对上 |
+| launch 找不到文件 | ③ CMakeLists 漏 install(DIRECTORY launch ...) |
+
+**核心记忆**：①② 是"写"，③ 是"编译"，④ 是"环境"，⑤ 是"跑"。launch 文件 = 把 ⑤ 自动化 + 附加参数/重映射。
+（配图画布：「ROS 学习图解」Canvas 中的《ROS2 节点一生·五步链》）
