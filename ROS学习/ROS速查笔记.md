@@ -157,3 +157,55 @@ rqt_graph           # 看节点关系图
 
 **核心记忆**：①② 是"写"，③ 是"编译"，④ 是"环境"，⑤ 是"跑"。launch 文件 = 把 ⑤ 自动化 + 附加参数/重映射。
 （配图画布：「ROS 学习图解」Canvas 中的《ROS2 节点一生·五步链》）
+
+---
+
+### Topic 发布/订阅通信模型（多对多异步广播）
+
+- **类型**：概念梳理
+- **发现日期**：2026-09-16
+- **关联知识点**：ROS 03 章 核心通信机制（01 话题 Topic）
+
+**模型要点**：
+
+```
+Publisher A ─┐
+Publisher B ─┼─→ /chatter (std_msgs/msg/String) ─→ Subscriber X
+             │      ↑ Topic：单向·异步·多对多        ─→ Subscriber Y
+             │                                      ─→ ros2 topic echo（也是订阅者）
+```
+
+| 特性 | 含义 |
+|------|------|
+| 单向 | 数据只从 Pub → Sub，没有回程 |
+| 异步 | 发布者 publish() 完就走，不等订阅者处理 |
+| 解耦 | 双方只认话题名，互不知道对方存在 |
+| 多对多 | N 个发布者、M 个订阅者同时接同一个 Topic |
+
+**与 Service 的边界**：要"一问一答"（如 /spawn 生成海龟）不能用 Topic，要用 Service（03-2）。
+（配图画布：「ROS 学习图解」Canvas 中的《ROS Topic 多对多通信模型》）
+
+---
+
+### RCLCPP_INFO 的 printf 风格格式化日志
+
+- **类型**：语法不懂
+- **发现日期**：2026-09-16
+- **关联知识点**：ROS 03 章 01 话题（节点打印）
+
+**问题描述**：
+`RCLCPP_INFO(get_logger(), "Publishing: '%s'", msg.data.c_str())` 这种写法没见过，不知道各部分是什么。
+
+**正解/笔记**：
+
+```cpp
+RCLCPP_INFO( get_logger(), "Publishing: '%s'", msg.data.c_str() )
+//   ④宏        ①日志器         ②格式字符串        ③填入的数据
+```
+
+- ① `get_logger()`：取本节点的日志器，日志要知道是哪个节点打的
+- ② 格式字符串：和 `printf` 完全同一套，`%s`=字符串 `%d`=整数 `%f`=浮点 `%zu`=size_t
+- ③ `msg.data.c_str()`：`%s` 只认 `const char*`，std::string 要转一下
+- ④ `RCLCPP_INFO` 是**宏**，自动带级别 + 时间戳 + 节点名前缀；WARN/ERROR 用法相同
+
+**为什么不用 std::cout**：日志要分级过滤、自动带前缀，cout 做不到。
