@@ -11,6 +11,8 @@
 
 ### 1. Topic 通信模型
 
+![Topic 发布/订阅通信模型](images/topic_pub_sub_model.png)
+
 ```
 Publisher                       Subscriber
    │                                ▲
