@@ -313,3 +313,174 @@ int main(int argc, char** argv) {
 - 发布者像**闹钟**：定时自己响（timer 触发）
 - 订阅者像**门铃**：有人按才响（消息触发回调）
 - 两者唯一连接点 = **话题名字符串**，代码互不引用
+
+
+---
+
+### Service 的"几板斧"（对照 Topic 框架）
+
+- **类型**：框架速记
+- **发现日期**：2026-09-20
+- **关联知识点**：ROS 03 章 02 服务 Service
+
+**骨架不变**：main() 四件套、spin、SharedPtr 别名——和 Topic 完全同一副。差别全在下面两套板斧里。
+
+**Server 三件套（被动，像"柜员"）**：
+
+```cpp
+① 创建：service_ = create_service<SrvType>("服务名",
+        std::bind(&类::回调, this, _1, _2));   // 双坑位！_1=请求 _2=响应
+② 回调：void cb(const std::shared_ptr<Request> req,
+                     std::shared_ptr<Response> res) {
+        res->字段 = 处理(req->字段);           // 填响应
+    }                                          // 函数返回 = 答复自动送达，没有 publish
+③ 成员：rclcpp::Service<SrvType>::SharedPtr service_;
+```
+
+**Client 三板斧（主动，像"顾客"，future 三步）**：
+
+```cpp
+① 等开门：while (!client->wait_for_service(1s)) { ... }   // Server 没起就循环等
+② 下单：  auto future = client->async_send_request(request);  // 不等，拿"取货单"
+③ 取货：  spin_until_future_complete(node, future);          // 等货（节点照常活着）
+         future.get()->结果;                                  // 凭单取结果
+```
+
+**与 Topic 的对仗记忆**：
+
+| | Topic | Service |
+|---|-------|---------|
+| 被动端 | Listener：`_1` 消息 | Server：`_1`请求 + `_2`响应 |
+| 主动端 | Talker：publish 完就走 | Client：必须等 future 取货 |
+| 连接点 | 话题名字符串 | 服务名字符串 |
+| 语义 | 喊话（单向、异步） | 打电话（双向、同步） |
+
+**口诀**：柜员"收请求、填响应、返回即送达"；顾客"等开门、下单、凭单取货"。
+
+
+---
+
+### ROS2 命令行速查表（截至 03-2 Service）
+
+- **类型**：命令速查
+- **发现日期**：2026-09-20
+- **关联知识点**：ROS 03 章 核心通信机制（Topic + Service 实操调试）
+
+**节点 node**：
+
+| 命令 | 作用 |
+|------|------|
+| `ros2 run <包名> <可执行名>` | 跑节点（最常用） |
+| `ros2 node list` | 当前活着的节点 |
+| `ros2 node info /节点名` | 节点户口：订阅/发布了什么 |
+
+**话题 topic**：
+
+| 命令 | 作用 |
+|------|------|
+| `ros2 topic list` | 有哪些话题 |
+| `ros2 topic echo /xxx` | 偷看数据（最常用调试） |
+| `ros2 topic hz /xxx` | 实际发布频率 |
+| `ros2 topic info /xxx` | 类型 + Pub/Sub 数量（排查静默失联第一招） |
+| `ros2 topic pub /xxx 包/msg/类型 "{字段: 值}"` | 手动发一条（没发布者也能测订阅端） |
+
+**服务 service**（与 topic 对称）：
+
+| 命令 | 作用 |
+|------|------|
+| `ros2 service list` | 有哪些服务 |
+| `ros2 service type /xxx` | 服务类型 |
+| `ros2 service call /xxx 包/srv/类型 "{字段: 值}"` | 手动调一次（不写代码测服务） |
+
+**工程**：
+
+| 命令 | 作用 |
+|------|------|
+| `ros2 pkg create <包名> --build-type ament_cmake --node-name <节点>` | 建包 |
+| `colcon build --packages-select <包名>` | 编译 |
+| `source install/setup.bash` | 注册（每个新终端都要！） |
+
+**记忆规律**：
+1. 全家一个妈：`ros2 <对象> <动作>`，对象 4 个（node/topic/service/pkg）
+2. topic ↔ service 对称：topic 的 `echo`（偷看）对应 service 的 `call`（试打）
+3. 调试三板斧：`list` 看名字 → `info` 看数量 → `echo/call` 看内容
+
+
+---
+
+### ROS2 C++ 代码一页纸（Topic + Service 合并版）
+
+- **类型**：框架速记
+- **发现日期**：2026-09-20
+- **关联知识点**：ROS 03 章 核心通信机制（全部通信代码的合并速查）
+
+**0. 不变骨架（所有节点通用）**：
+
+```cpp
+#include <rclcpp/rclcpp.hpp>
+// + 你用的消息/服务头文件
+
+class 类名 : public rclcpp::Node {
+public:
+    类名() : Node("节点名") {
+        // 在这里建 pub / sub / service / timer
+    }
+private:
+    // 回调函数
+    // 成员句柄（alias 一族）
+};
+
+int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<类名>());
+    rclcpp::shutdown();
+    return 0;
+}
+```
+
+**1. Topic 两套**：
+
+```cpp
+// Talker（闹钟式·主动）三件套
+pub_   = create_publisher<Msg>("话题名", 10);
+timer_ = create_wall_timer(间隔, bind(&类::回调, this));
+回调里:  msg.data = ...;  pub_->publish(msg);
+
+// Listener（门铃式·被动）三件套
+sub_ = create_subscription<Msg>("话题名", 10,
+        bind(&类::回调, this, _1));      // 单坑位
+回调里:  msg->字段;
+```
+
+**2. Service 两套**：
+
+```cpp
+// Server（柜员式·被动）三件套
+service_ = create_service<Srv>("服务名",
+            bind(&类::回调, this, _1, _2));   // 双坑位：_1请求 _2响应
+回调里:  response->字段 = 处理(request->字段);   // 填完即送达，无 publish
+
+// Client（顾客式·主动）三板斧 future
+client->wait_for_service(1s);                   // ① 等开门
+auto future = client->async_send_request(req);  // ② 下单拿取货单
+spin_until_future_complete(node, future);       // ③ 等货（节点照常活着）
+future.get()->字段;                              //   取货
+```
+
+**3. alias 一族速查**（`Xxx::SharedPtr` ≡ `std::shared_ptr<Xxx>`，句柄一律 `->` 调用）：
+
+| 句柄 | 用于 |
+|------|------|
+| `rclcpp::Publisher<T>::SharedPtr` | 发布 |
+| `rclcpp::Subscription<T>::SharedPtr` | 订阅 |
+| `rclcpp::Service<Srv>::SharedPtr` | 服务 |
+| `rclcpp::TimerBase::SharedPtr` | 定时器 |
+| `rclcpp::Node::SharedPtr` | 节点（Client 用） |
+
+**4. 类型命名规律**：
+
+```
+std_msgs/msg/String                 →  std_msgs::msg::String
+example_interfaces/srv/AddTwoInts   →  example_interfaces::srv::AddTwoInts
+my_package/srv/Xxx（自定义）         →  my_package::srv::Xxx
+```
