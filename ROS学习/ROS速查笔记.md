@@ -209,3 +209,107 @@ RCLCPP_INFO( get_logger(), "Publishing: '%s'", msg.data.c_str() )
 - ④ `RCLCPP_INFO` 是**宏**，自动带级别 + 时间戳 + 节点名前缀；WARN/ERROR 用法相同
 
 **为什么不用 std::cout**：日志要分级过滤、自动带前缀，cout 做不到。
+
+---
+
+### rclcpp 句柄的 SharedPtr 别名一族（`XXX::SharedPtr`）
+
+- **类型**：语法不懂
+- **发现日期**：2026-09-16
+- **关联知识点**：ROS 03 章 01 话题（类风格节点的成员声明）
+
+**问题描述**：
+`rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_;` 这种写法不懂，`::SharedPtr` 是什么、为什么可以这么用。
+
+**正解/笔记**（分三层）：
+
+1. `rclcpp::Publisher<MessageT>` 是**类模板**，必须传消息类型实例化
+2. Publisher 类内部定义了别名 `using SharedPtr = std::shared_ptr<Publisher<MessageT>>;`
+   所以 `Publisher<...>::SharedPtr` ≡ `std::shared_ptr<Publisher<...>>`
+3. 声明成员变量：智能指针管理句柄，用 `->` 调用成员（如 `pub_->publish(msg)`），节点析构时自动释放（RAII）
+
+**alias 一族速查**（看到 `XXX::SharedPtr` 就翻译成 `std::shared_ptr<XXX>`）：
+
+| 写法 | 等价于 |
+|------|--------|
+| `rclcpp::Publisher<T>::SharedPtr` | `std::shared_ptr<Publisher<T>>` |
+| `rclcpp::Subscription<T>::SharedPtr` | `std::shared_ptr<Subscription<T>>` |
+| `rclcpp::TimerBase::SharedPtr` | `std::shared_ptr<TimerBase>` |
+| `rclcpp::Node::SharedPtr` | `std::shared_ptr<Node>` |
+
+**为什么用别名不裸写**：换消息类型只改一处；与官方教程/源码写法一致。
+
+---
+
+### Talker / Listener 代码框架模板（背这个）
+
+- **类型**：框架速记
+- **发现日期**：2026-09-16
+- **关联知识点**：ROS 03 章 01 话题（发布者与订阅者完整写法）
+
+**核心框架（所有节点都长这样）**：
+
+```cpp
+// src/xxx.cpp
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>      // ① 按消息类型换头文件
+#include <functional>                   // std::bind 需要
+
+class XxxNode : public rclcpp::Node {   // ② 类名自定义
+public:
+    XxxNode() : Node("xxx_node") {      // ③ 构造时定节点名
+        // ④ 在这里建 publisher / subscription / timer
+    }
+private:
+    // ⑤ 回调函数
+    // ⑥ 成员变量（别名一族句柄）
+};
+
+int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<XxxNode>());  // ⑦ 四件套，背下来
+    rclcpp::shutdown();
+    return 0;
+}
+```
+
+**Talker（发布者）在 ④⑤⑥ 填什么**：
+
+```cpp
+④  pub_ = create_publisher<std_msgs::msg::String>("chatter", 10);
+    timer_ = create_wall_timer(                          // 定时器：多久发一次
+        std::chrono::milliseconds(100),                  // 100ms = 10Hz
+        std::bind(&Talker::timeCallback, this));
+⑤  void timeCallback() {                                // 到点就被调用
+        auto msg = std_msgs::msg::String();
+        msg.data = "Hello " + std::to_string(count_++);
+        pub_->publish(msg);
+    }
+⑥  size_t count_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_;
+    rclcpp::TimerBase::SharedPtr timer_;
+```
+
+**Listener（订阅者）在 ④⑤⑥ 填什么**：
+
+```cpp
+④  sub_ = create_subscription<std_msgs::msg::String>(
+        "chatter", 10,                                 // 话题名必须和 Talker 一致
+        std::bind(&Listener::topicCallback, this,
+                  std::placeholders::_1));             // _1 = 消息从这个坑位传入
+⑤  void topicCallback(const std_msgs::msg::String::SharedPtr msg) {
+        RCLCPP_INFO(get_logger(), "I heard: '%s'", msg->data.c_str());
+    }
+⑥  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub_;
+```
+
+**记忆口诀**：
+
+| 角色 | 主动/被动 | 核心三件套 |
+|------|----------|-----------|
+| Talker | 主动：定时器驱动 | `create_publisher` + `timer` + `publish()` |
+| Listener | 被动：回调驱动 | `create_subscription` + `_1` 占位 + `msg->` |
+
+- 发布者像**闹钟**：定时自己响（timer 触发）
+- 订阅者像**门铃**：有人按才响（消息触发回调）
+- 两者唯一连接点 = **话题名字符串**，代码互不引用
