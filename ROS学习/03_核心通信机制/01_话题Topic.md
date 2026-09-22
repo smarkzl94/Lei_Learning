@@ -30,64 +30,7 @@ Publisher                       Subscriber
 - **Topic**：消息通道，多对多通信
 - 异步通信，发布者不等待订阅者
 
-### 2. ROS1 C++ Publisher
-
-```cpp
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "talker");
-    ros::NodeHandle nh;
-    
-    // 创建 Publisher
-    // 参数：话题名、队列大小
-    ros::Publisher pub = nh.advertise<std_msgs::String>("chatter", 10);
-    
-    ros::Rate rate(10);  // 10 Hz
-    int count = 0;
-    
-    while (ros::ok()) {
-        std_msgs::String msg;
-        msg.data = "Hello " + std::to_string(count);
-        
-        pub.publish(msg);   // 发布消息
-        ROS_INFO("Published: %s", msg.data.c_str());
-        
-        ros::spinOnce();    // 处理回调
-        rate.sleep();
-        ++count;
-    }
-    
-    return 0;
-}
-```
-
-### 3. ROS1 C++ Subscriber
-
-```cpp
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-
-// 回调函数
-void chatterCallback(const std_msgs::String::ConstPtr& msg) {
-    ROS_INFO("Received: %s", msg->data.c_str());
-}
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "listener");
-    ros::NodeHandle nh;
-    
-    // 创建 Subscriber
-    ros::Subscriber sub = nh.subscribe("chatter", 10, chatterCallback);
-    
-    ros::spin();  // 阻塞，等待回调
-    
-    return 0;
-}
-```
-
-### 4. ROS2 C++ Publisher
+### 2. ROS2 C++ Publisher
 
 ```cpp
 #include <rclcpp/rclcpp.hpp>
@@ -123,7 +66,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-### 5. ROS2 C++ Subscriber
+### 3. ROS2 C++ Subscriber
 
 ```cpp
 #include <rclcpp/rclcpp.hpp>
@@ -153,7 +96,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-### 6. 常用消息类型
+### 4. 常用消息类型
 
 | 消息包 | 常用消息 | 说明 |
 |--------|----------|------|
@@ -163,11 +106,11 @@ int main(int argc, char** argv) {
 | `nav_msgs` | Odometry, Path, OccupancyGrid | 导航数据 |
 | `tf2_msgs` | TFMessage | 坐标变换 |
 
-### 7. 队列和缓冲区
+### 5. 队列和缓冲区
 
 ```cpp
 // 队列大小：缓冲多少条消息
-ros::Publisher pub = nh.advertise<std_msgs::String>("chatter", 10);
+// create_publisher<...>("chatter", 10) 里的 10 就是队列长度
 
 // 队列策略（ROS2）
 // KEEP_LAST (默认): 只保留最新 N 条
@@ -191,7 +134,7 @@ auto qos = rclcpp::QoS(10)
 
 ### 实验 3：图像发布
 ```cpp
-#include <sensor_msgs/Image.h>
+#include <sensor_msgs/msg/image.hpp>
 // 发布一个简单的灰度图像
 ```
 
@@ -212,8 +155,8 @@ Publisher 发送 Twist 消息，Subscriber 接收并解析线速度和角速度�
 
 ## ❓ 常见问题
 
-**Q: spin() 和 spinOnce() 的区别？**
-A: `spin()` 阻塞直到节点关闭；`spinOnce()` 处理一次回调然后返回。Publisher 通常配合 `spinOnce()` + `rate.sleep()`。
+**Q: spin() 一直阻塞，Publisher 定时发消息靠什么？**
+A: `spin()` 阻塞直到节点关闭；定时发布用 `create_wall_timer` 注册定时器回调，由 ROS2 到点自动触发，不需要手写 while 循环。
 
 **Q: 为什么 Subscriber 收不到消息？**
 A: 检查：1) 话题名是否一致；2) 消息类型是否匹配；3) 是否 source 了正确的环境。

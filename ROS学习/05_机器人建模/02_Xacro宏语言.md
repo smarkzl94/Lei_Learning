@@ -122,14 +122,23 @@ Xacro（XML Macro）是 URDF 的预处理工具：
 
 ```bash
 # 命令行转换
-rosrun xacro xacro robot.xacro > robot.urdf
+ros2 run xacro xacro robot.xacro > robot.urdf
 
-# 检查
-roslaunch my_pkg display.launch
+# 检查（RViz 可视化，joint_state_publisher_gui 拖滑块）
+ros2 launch my_pkg display.launch.py
+```
 
-# launch 中自动转换
-<param name="robot_description" 
-       command="$(find xacro)/xacro '$(find my_pkg)/urdf/robot.xacro'" />
+```python
+# launch 中自动转换（Python，用 Command  substitution）
+from launch.substitutions import Command
+
+Node(
+    package='robot_state_publisher',
+    executable='robot_state_publisher',
+    parameters=[{
+        'robot_description': Command(['xacro ', os.path.join(urdf_dir, 'robot.xacro')])
+    }]
+)
 ```
 
 ---

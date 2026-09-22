@@ -27,33 +27,7 @@
 4. 关闭 Windows 快速启动
 5. 关闭 Secure Boot（某些情况）
 
-### 2. 安装 ROS Noetic（Ubuntu 20.04）
-
-```bash
-# 1. 设置软件源
-sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-
-# 2. 添加密钥
-sudo apt install curl
-curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
-
-# 3. 更新索引
-sudo apt update
-
-# 4. 安装完整版 ROS
-sudo apt install ros-noetic-desktop-full
-
-# 5. 环境配置（每次新开终端自动加载）
-echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
-source ~/.bashrc
-
-# 6. 安装构建依赖
-sudo apt install python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
-sudo rosdep init
-rosdep update
-```
-
-### 3. 安装 ROS2 Humble（Ubuntu 22.04）
+### 2. 安装 ROS2 Humble（Ubuntu 22.04）
 
 ```bash
 # 1. 设置语言环境
@@ -80,20 +54,7 @@ source ~/.bashrc
 sudo apt install ros-dev-tools
 ```
 
-### 4. 创建工作空间（ROS1）
-
-```bash
-# 创建工作空间
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/
-catkin_make
-
-# 配置环境
-echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
-source ~/.bashrc
-```
-
-### 5. 创建工作空间（ROS2）
+### 3. 创建工作空间（ROS2）
 
 ```bash
 # 创建工作空间
@@ -110,24 +71,6 @@ source ~/.bashrc
 
 ## 💻 安装验证
 
-### ROS1 验证
-```bash
-# 终端 1：启动 Master
-roscore
-
-# 终端 2：运行小海龟
-rosrun turtlesim turtlesim_node
-
-# 终端 3：键盘控制
-rosrun turtlesim turtle_teleop_key
-
-# 终端 4：查看节点和话题
-rosnode list
-rostopic list
-rqt_graph
-```
-
-### ROS2 验证
 ```bash
 # 终端 1：运行小海龟
 ros2 run turtlesim turtlesim_node
@@ -150,17 +93,12 @@ ros2 run rqt_graph rqt_graph
 
 ### 练习 2：环境变量检查
 ```bash
-echo $ROS_DISTRO      # 应输出 noetic 或 humble
-echo $ROS_ROOT        # ROS 安装路径
-which roscore         # 命令位置
+echo $ROS_DISTRO      # 应输出 humble
+which ros2            # 命令位置
 ```
 
 ### 练习 3：rqt 工具探索
 ```bash
-# ROS1
-rqt
-
-# ROS2
 ros2 run rqt_gui rqt_gui
 ```
 探索 rqt 的插件：Node Graph、Topic Monitor、Message Publisher 等。
@@ -169,17 +107,11 @@ ros2 run rqt_gui rqt_gui
 
 ## ❓ 常见问题
 
-**Q: `rosdep init` 报错？**
-A: 可能是网络问题，尝试使用手机热点或配置代理。也可以手动下载 rosdistro。
+**Q: `rosdep` 相关命令报错？**
+A: ROS2 用 `rosdep init` / `rosdep update` 初始化，报错多半是网络问题，尝试手机热点或代理。
 
 **Q: Gazebo 启动黑屏/崩溃？**
 A: 虚拟机常见问题，建议用双系统。如果是独立显卡，检查驱动是否安装。
 
-**Q: 如何切换 ROS1 和 ROS2？**
-```bash
-# 临时切换（当前终端）
-source /opt/ros/noetic/setup.bash   # ROS1
-source /opt/ros/humble/setup.bash    # ROS2
-
-# 不要同时 source 两个！
-```
+**Q: 能同时装 ROS1 和 ROS2 吗？**
+A: 可以共存，但**不要同时 source 两个发行版**的环境，一个终端只激活一个：`source /opt/ros/humble/setup.bash`（本仓库只学 ROS2）。

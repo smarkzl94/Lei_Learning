@@ -140,7 +140,7 @@ dot -Tpdf robot.gv -o robot.pdf
 
 ### 实验 2：在 RViz 中查看
 ```bash
-roslaunch my_pkg display.launch
+ros2 launch my_pkg display.launch.py
 ```
 
 调整 joint_state_publisher 的滑块，观察关节运动。

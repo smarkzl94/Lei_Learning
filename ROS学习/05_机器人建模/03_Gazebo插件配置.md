@@ -220,10 +220,10 @@ Gazebo 插件扩展了仿真器的功能：
 
 ### 实验 2：Gazebo 中测试
 ```bash
-roslaunch my_pkg robot_gazebo.launch
+ros2 launch my_pkg robot_gazebo.launch.py
 ```
 
-用 `rostopic pub` 发送 `cmd_vel` 控制机器人移动，观察传感器数据。
+用 `ros2 topic pub` 发送 `cmd_vel` 控制机器人移动，观察传感器数据。
 
 ### 实验 3：调整物理参数
 修改质量、摩擦系数等参数，观察对机器人运动的影响。

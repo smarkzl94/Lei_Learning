@@ -21,50 +21,53 @@ Gazebo 是 ROS 配套的物理仿真器：
 ### 2. 启动 Gazebo
 
 ```bash
+# TurtleBot3 仿真（常用入口）
+export TURTLEBOT3_MODEL=waffle
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+
 # 空世界
-roslaunch gazebo_ros empty_world.launch
-
-# TurtleBot3 仿真
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
-
-# ROS2
-ros2 launch gazebo_ros gazebo.launch.py
+ros2 launch turtlebot3_gazebo empty_world.launch.py
 ```
 
-### 3. Gazebo 插件
+### 3. Gazebo 插件（ROS2 版）
 
 #### 差速驱动插件
 ```xml
-<!-- URDF 中的 Gazebo 插件 -->
+<!-- URDF 中的 Gazebo 插件（ROS2 参数为下划线风格） -->
 <gazebo>
-  <plugin name="differential_drive_controller" 
-          filename="libgazebo_ros_diff_drive.so">
-    <legacyMode>false</legacyMode>
-    <alwaysOn>true</alwaysOn>
-    <updateRate>50</updateRate>
-    <leftJoint>wheel_left_joint</leftJoint>
-    <rightJoint>wheel_right_joint</rightJoint>
-    <wheelSeparation>0.354</wheelSeparation>
-    <wheelDiameter>0.194</wheelDiameter>
-    <torque>20</torque>
-    <commandTopic>cmd_vel</commandTopic>
-    <odometryTopic>odom</odometryTopic>
-    <odometryFrame>odom</odometryFrame>
-    <robotBaseFrame>base_footprint</robotBaseFrame>
-    <publishWheelTF>false</publishWheelTF>
-    <publishOdomTF>true</publishOdomTF>
+  <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+    <ros>
+      <remapping>cmd_vel:=cmd_vel</remapping>
+      <remapping>odom:=odom</remapping>
+    </ros>
+    <update_rate>50</update_rate>
+    <left_joint>wheel_left_joint</left_joint>
+    <right_joint>wheel_right_joint</right_joint>
+    <wheel_separation>0.354</wheel_separation>
+    <wheel_diameter>0.194</wheel_diameter>
+    <max_wheel_torque>20</max_wheel_torque>
+    <max_wheel_acceleration>1.0</max_wheel_acceleration>
+    <command_topic>cmd_vel</command_topic>
+    <odometry_topic>odom</odometry_topic>
+    <odometry_frame>odom</odometry_frame>
+    <robot_base_frame>base_footprint</robot_base_frame>
+    <publish_odom>true</publish_odom>
+    <publish_odom_tf>true</publish_odom_tf>
+    <publish_wheel_tf>false</publish_wheel_tf>
   </plugin>
 </gazebo>
 ```
 
-#### 激光雷达插件
+#### 激光雷达插件（ROS2 用 ray_sensor）
 ```xml
 <gazebo reference="base_scan">
   <sensor type="ray" name="lds_lfcd_sensor">
     <plugin name="gazebo_ros_lds_lfcd_controller" 
-            filename="libgazebo_ros_laser.so">
-      <topicName>scan</topicName>
-      <frameName>base_scan</frameName>
+            filename="libgazebo_ros_ray_sensor.so">
+      <ros>
+        <remapping>~/out:=scan</remapping>
+      </ros>
+      <frame_name>base_scan</frame_name>
     </plugin>
   </sensor>
 </gazebo>
@@ -76,12 +79,13 @@ ros2 launch gazebo_ros gazebo.launch.py
   <sensor type="camera" name="camera">
     <plugin name="camera_controller" 
             filename="libgazebo_ros_camera.so">
-      <alwaysOn>true</alwaysOn>
-      <updateRate>30.0</updateRate>
-      <cameraName>camera</cameraName>
-      <imageTopicName>image_raw</imageTopicName>
-      <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-      <frameName>camera_link</frameName>
+      <ros>
+        <remapping>~/image_raw:=image_raw</remapping>
+        <remapping>~/camera_info:=camera_info</remapping>
+      </ros>
+      <camera_name>camera</camera_name>
+      <frame_name>camera_link</frame_name>
+      <update_rate>30.0</update_rate>
     </plugin>
   </sensor>
 </gazebo>
@@ -139,21 +143,17 @@ ros2 launch gazebo_ros gazebo.launch.py
 </sdf>
 ```
 
-### 5. Gazebo 命令
+### 5. Gazebo 命令（ROS2）
 
 ```bash
-# 暂停/继续仿真（GUI 中的空格键）
-# 逐步仿真
-
-# 命令行工具
-rostopic pub /gazebo/set_physics_properties gazebo_msgs/PhysicsProperties ...
-
-# 生成模型
-rosservice call /gazebo/spawn_urdf_model ...
-rosservice call /gazebo/spawn_sdf_model ...
+# 生成模型（spawn_entity.py 是 ROS2 标准方式）
+ros2 run gazebo_ros spawn_entity.py -file my_robot.sdf -entity my_robot
+ros2 run gazebo_ros spawn_entity.py -topic robot_description -entity my_robot   # 从 URDF 生成
 
 # 删除模型
-rosservice call /gazebo/delete_model "model_name: 'my_robot'"
+ros2 service call /delete_entity gazebo_msgs/srv/DeleteEntity "{name: 'my_robot'}"
+
+# 暂停/继续仿真：GUI 中空格键；或向 /world/*/control 服务发请求
 ```
 
 ---
@@ -163,7 +163,7 @@ rosservice call /gazebo/delete_model "model_name: 'my_robot'"
 ### 实验 1：运行 TurtleBot3 仿真
 ```bash
 export TURTLEBOT3_MODEL=waffle
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
 ```
 
 用键盘控制机器人移动，观察传感器数据。
@@ -175,7 +175,7 @@ roslaunch turtlebot3_gazebo turtlebot3_world.launch
 在 Gazebo 中：
 1. 查看激光雷达数据（RViz）
 2. 查看摄像头图像（rqt_image_view）
-3. 查看里程计数据（rostopic echo /odom）
+3. 查看里程计数据（ros2 topic echo /odom）
 
 ---
 

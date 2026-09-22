@@ -33,38 +33,32 @@
 
 | 版本 | Ubuntu | 状态 | 推荐度 |
 |------|--------|------|--------|
-| Melodic | 18.04 | 维护中 | ⭐⭐ |
-| **Noetic** | **20.04** | **LTS** | **⭐⭐⭐ 推荐新手** |
-| Foxy | 20.04 | LTS | ⭐⭐ |
-| **Humble** | **22.04** | **LTS** | **⭐⭐⭐ 最新稳定版** |
-| Jazzy | 24.04 | 最新 | ⭐⭐ |
+| Foxy | 20.04 | EOL | ⭐ |
+| **Humble** | **22.04** | **LTS** | **⭐⭐⭐ 本仓库选定** |
+| Iron | 22.04 | EOL | ⭐ |
+| Jazzy | 24.04 | LTS | ⭐⭐⭐ 最新稳定版 |
 
-> **建议**：新手选 **Noetic**（资料最多）或 **Humble**（最新 LTS）。
+> **决定**：直接上 ROS2 **Humble**（22.04 LTS，2027 年 5 月前维护）。ROS1（Noetic）已停止维护（2025.04 EOL），不再学习。
 
 ### 4. ROS 核心概念（先建立印象）
 
 ```
-┌─────────────────────────────────────────┐
-│              ROS Master                 │
-│         (名字注册、查找服务)              │
-└─────────────────────────────────────────┘
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-   ┌────────┐  ┌────────┐  ┌────────┐
-   │ Node A │  │ Node B │  │ Node C │
-   │ (传感器)│  │ (控制) │  │ (显示) │
-   └───┬────┘  └────┬───┘  └───┬────┘
-       │            │          │
-       └────────────┴──────────┘
-              Topic: /sensor
+   ┌────────┐  发布   ┌──────────────────┐  订阅   ┌────────┐
+   │ Node A │ ──────► │  Topic: /sensor  │ ──────► │ Node B │
+   │ (传感器)│        │  (异步·多对多广播) │        │ (控制) │
+   └────────┘        └──────────────────┘        └────────┘
+        ▲                                              │
+        │──────────── Service: /get_status ────────────┤
+                     (同步·一问一答)
+
+   ROS2 没有 Master：节点基于 DDS 自动互相发现
 ```
 
 - **Node（节点）**：执行计算的进程，最小执行单元
 - **Topic（话题）**：节点间异步通信的发布/订阅通道
 - **Message（消息）**：话题中传输的数据结构
 - **Service（服务）**：节点间同步通信的请求/响应机制
-- **ROS Master**：名字和注册服务，所有节点启动时向它注册
+- **Action（动作）**：长任务通信：Goal + Feedback + Result + Cancel
 
 ### 5. ROS 的优缺点
 
@@ -85,26 +79,23 @@
 ## 💻 快速体验
 
 ```bash
-# 安装 ROS Noetic（Ubuntu 20.04）
-# 参考官方安装指南：http://wiki.ros.org/noetic/Installation/Ubuntu
+# 安装 ROS2 Humble（Ubuntu 22.04）
+# 参考官方安装指南：https://docs.ros.org/en/humble/Installation.html
 
-# 启动 ROS Master
-roscore
+# 终端 1 - 运行小海龟（ROS2 不需要 roscore）
+ros2 run turtlesim turtlesim_node
 
-# 新终端 - 运行小海龟
-rosrun turtlesim turtlesim_node
-
-# 新终端 - 键盘控制
-rosrun turtlesim turtle_teleop_key
+# 终端 2 - 键盘控制
+ros2 run turtlesim turtle_teleop_key
 
 # 查看节点列表
-rosnode list
+ros2 node list
 
 # 查看话题列表
-rostopic list
+ros2 topic list
 
 # 查看话题数据
-rostopic echo /turtle1/pose
+ros2 topic echo /turtle1/pose
 ```
 
 ---
@@ -120,10 +111,10 @@ rostopic echo /turtle1/pose
 ### 练习 2：ROS 命令探索
 尝试以下命令，理解每个命令的作用：
 ```bash
-rosnode info /turtlesim
-rostopic info /turtle1/cmd_vel
-rosservice list
-rosparam list
+ros2 node info /turtlesim
+ros2 topic info /turtle1/cmd_vel
+ros2 service list
+ros2 param list
 ```
 
 ### 练习 3：了解 ROS 社区
@@ -139,5 +130,5 @@ rosparam list
 **Q: ROS 和机器人操作系统（如 VxWorks）有什么区别？**
 A: ROS 不是实时操作系统，而是运行在 Linux 上的软件框架，依赖 Linux 的调度。硬实时场景需要结合实时内核。
 
-**Q: ROS1 和 ROS2 怎么选？**
-A: ROS1（Noetic）资料多、生态成熟，适合学习和快速开发；ROS2（Humble）是下一代，支持分布式、实时、嵌入式，是长期方向。
+**Q: 为什么直接学 ROS2 而不是 ROS1？**
+A: ROS1（Noetic）2025 年已停止维护，ROS2 是唯一的长期方向。虽然 ROS1 中文老教程更多，但 ROS2（Humble）资料已足够，且概念模型更现代（无 Master、DDS 发现），学完不用迁移。

@@ -33,7 +33,7 @@
 
 ## ✅ 完成检查
 
-- [ ] 能使用 gmapping/cartographer 建图
+- [ ] 能使用 slam_toolbox/cartographer 建图
 - [ ] 能配置导航栈实现自主导航
 - [ ] 能处理激光雷达和摄像头数据
 - [ ] 完成所有练习任务

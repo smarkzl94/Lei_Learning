@@ -21,14 +21,11 @@ RViz 是 ROS 的 3D 可视化工具，用于显示：
 ### 2. 启动 RViz
 
 ```bash
-# ROS1
-rosrun rviz rviz
-
-# ROS2
+# 启动
 ros2 run rviz2 rviz2
 
 # 加载保存的配置
-rviz -d config/my_config.rviz
+ros2 run rviz2 rviz2 -d config/my_config.rviz
 ```
 
 ### 3. 常用显示插件
@@ -60,9 +57,13 @@ rviz -d config/my_config.rviz
 # 保存配置
 File → Save Config As → my_config.rviz
 
-# 在 launch 中加载
-<node pkg="rviz" type="rviz" name="rviz" 
-      args="-d $(find my_pkg)/config/my_config.rviz" />
+# 在 launch 中加载（Python）
+Node(
+    package='rviz2',
+    executable='rviz2',
+    name='rviz2',
+    arguments=['-d', os.path.join('config', 'my_config.rviz')]
+)
 ```
 
 ### 6. 常用操作
@@ -82,14 +83,14 @@ File → Save Config As → my_config.rviz
 
 ### 实验 1：显示 Turtle
 ```bash
-roslaunch turtlebot3_fake turtlebot3_fake.launch
-rviz -d `rospack find turtlebot3_description`/rviz/model.rviz
+ros2 launch turtlebot3_fake_node turtlebot3_fake_node.launch.py
+ros2 run rviz2 rviz2 -d $(ros2 pkg prefix turtlebot3_description)/share/turtlebot3_description/rviz/model.rviz
 ```
 
 ### 实验 2：显示传感器数据
 ```bash
 # 启动 Gazebo 仿真（带传感器）
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
 
 # RViz 中添加：
 # - LaserScan: /scan
@@ -99,15 +100,15 @@ roslaunch turtlebot3_gazebo turtlebot3_world.launch
 
 ### 实验 3：自定义 Marker
 ```cpp
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/msg/marker.hpp>
 
-visualization_msgs::Marker marker;
+visualization_msgs::msg::Marker marker;
 marker.header.frame_id = "map";
-marker.header.stamp = ros::Time::now();
+marker.header.stamp = node->now();
 marker.ns = "my_markers";
 marker.id = 0;
-marker.type = visualization_msgs::Marker::SPHERE;
-marker.action = visualization_msgs::Marker::ADD;
+marker.type = visualization_msgs::msg::Marker::SPHERE;
+marker.action = visualization_msgs::msg::Marker::ADD;
 marker.pose.position.x = 1.0;
 marker.pose.position.y = 2.0;
 marker.pose.position.z = 0.0;
@@ -119,7 +120,7 @@ marker.color.g = 0.0;
 marker.color.b = 0.0;
 marker.color.a = 1.0;
 
-pub.publish(marker);
+pub_->publish(marker);
 ```
 
 ---

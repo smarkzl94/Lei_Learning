@@ -77,7 +77,7 @@
 | 项目 | 推荐配置 |
 |------|----------|
 | 操作系统 | Ubuntu 20.04 / 22.04 |
-| ROS 版本 | Noetic (20.04) / Humble (22.04) |
+| ROS 版本 | Humble (22.04) |
 | 内存 | 8GB+ |
 | 硬盘 | 50GB+ |
 
@@ -89,12 +89,11 @@
 ### 安装验证
 ```bash
 # 检查 ROS 安装
-rosversion -d
+ros2 --version
 
-# 运行小海龟测试
-roscore
-rosrun turtlesim turtlesim_node
-rosrun turtlesim turtle_teleop_key
+# 运行小海龟测试（ROS2 不需要 roscore）
+ros2 run turtlesim turtlesim_node
+ros2 run turtlesim turtle_teleop_key
 ```
 
 ---
@@ -142,7 +141,7 @@ rosrun turtlesim turtle_teleop_key
 - [ ] 能在 Gazebo 中看到机器人模型
 
 ### 阶段六完成标准
-- [ ] 能使用 gmapping 建图
+- [ ] 能使用 slam_toolbox 建图
 - [ ] 能配置导航栈实现自主导航
 - [ ] 能处理激光雷达和摄像头数据
 

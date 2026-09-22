@@ -9,49 +9,9 @@
 
 ## 📚 核心知识点
 
-### 1. ROS1 Launch 文件
+### 1. ROS2 Launch 文件
 
-Launch 文件用于一次性启动多个节点、设置参数。
-
-```xml
-<!-- launch/my_launch.launch -->
-<launch>
-  <!-- 设置参数 -->
-  <param name="robot_name" value="my_robot" />
-  
-  <!-- 加载参数文件 -->
-  <rosparam file="$(find my_pkg)/config/params.yaml" command="load" />
-  
-  <!-- 启动节点 -->
-  <node pkg="turtlesim" type="turtlesim_node" name="sim" />
-  
-  <!-- 带重映射的节点 -->
-  <node pkg="turtlesim" type="turtle_teleop_key" name="teleop">
-    <remap from="/turtle1/cmd_vel" to="/robot/cmd_vel" />
-  </node>
-  
-  <!-- 命名空间 -->
-  <group ns="robot1">
-    <node pkg="my_pkg" type="my_node" name="controller" />
-  </group>
-  
-  <!-- 条件启动 -->
-  <arg name="use_sim" default="true" />
-  <group if="$(arg use_sim)">
-    <node pkg="gazebo_ros" type="gazebo" name="gazebo" />
-  </group>
-</launch>
-```
-
-#### 运行 Launch
-```bash
-roslaunch my_pkg my_launch.launch
-roslaunch my_pkg my_launch.launch use_sim:=false  # 传参数
-```
-
-### 2. ROS2 Launch 文件
-
-ROS2 支持 Python、XML、YAML 三种格式。
+ROS2 支持 Python、XML、YAML 三种格式，**推荐 Python**（表达能力最强）。
 
 #### Python 格式（推荐）
 ```python
@@ -113,22 +73,21 @@ ros2 launch my_pkg my_launch.xml
 ros2 launch my_pkg my_launch.py use_sim:=false
 ```
 
-### 3. 参数设置
+### 2. 参数设置
 
-#### ROS1
-```xml
-<!-- 在 launch 中设置 -->
-<param name="max_speed" value="1.0" />
-<param name="robot_name" value="turtle1" />
-
-<!-- 在节点内设置 -->
-<node pkg="my_pkg" type="my_node" name="my_node">
-  <param name="kp" value="0.5" />
-  <param name="ki" value="0.1" />
-</node>
-
-<!-- 加载 YAML -->
-<rosparam file="$(find my_pkg)/config/controller.yaml" command="load" />
+#### 在 launch 中设置（Python）
+```python
+Node(
+    package='my_pkg',
+    executable='my_node',
+    parameters=[{'kp': 0.5, 'ki': 0.1}]          # 直接传参
+)
+# 或加载 YAML
+Node(
+    package='my_pkg',
+    executable='my_node',
+    parameters=['config/controller.yaml']         # 加载文件
+)
 ```
 
 #### YAML 参数文件
@@ -146,25 +105,24 @@ limits:
 
 #### 代码中读取参数
 ```cpp
-// ROS1
-ros::NodeHandle nh("~");  // 私有命名空间
-double kp;
-nh.param("kp", kp, 0.5);  // 带默认值
-
-// ROS2
+// ROS2：先声明（带默认值），再读取
 node->declare_parameter("kp", 0.5);
 double kp = node->get_parameter("kp").as_double();
 ```
 
-### 4. 节点重映射
+### 3. 节点重映射
 
 ```bash
 # 命令行重映射
-rosrun turtlesim turtlesim_node __name:=my_turtle
-rosrun turtlesim turtle_teleop_key turtle1/cmd_vel:=robot/cmd_vel
+ros2 run turtlesim turtlesim_node --ros-args -r __node:=my_turtle
+ros2 run turtlesim turtle_teleop_key --ros-args -r turtle1/cmd_vel:=robot/cmd_vel
 
-# launch 文件重映射
-<remap from="turtle1/cmd_vel" to="robot/cmd_vel" />
+# launch 文件重映射（Python）
+Node(
+    package='turtlesim',
+    executable='turtle_teleop_key',
+    remappings=[('turtle1/cmd_vel', 'robot/cmd_vel')]
+)
 ```
 
 ---
@@ -193,7 +151,7 @@ rosrun turtlesim turtle_teleop_key turtle1/cmd_vel:=robot/cmd_vel
 - 控制器参数
 
 ### 练习 2：参数动态重配置
-使用 `dynamic_reconfigure`（ROS1）或 `rclcpp::ParameterEventHandler`（ROS2）实现运行时参数修改。
+使用 `add_on_set_parameters_callback`（ROS2 参数回调）实现运行时参数修改。
 
 ### 练习 3：复杂 Launch 结构
 组织多个 launch 文件：
@@ -206,11 +164,11 @@ rosrun turtlesim turtle_teleop_key turtle1/cmd_vel:=robot/cmd_vel
 
 ## ❓ 常见问题
 
-**Q: Launch 文件找不到包？**
-A: 使用 `$(find pkg_name)` 来定位包路径，不要用绝对路径。
+**Q: Launch 文件找不到？**
+A: 确认 CMakeLists.txt 里有 `install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})` 且重新编译；路径不要写绝对路径。
 
 **Q: 节点启动顺序怎么控制？**
-A: ROS 没有内置的启动顺序控制。可用 `launch` 的 `LaunchDescription` 中的顺序，或节点内等待服务/话题就绪。
+A: ROS2 没有强制的启动顺序。可在 launch 里组合动作，或节点内等待服务/话题就绪。
 
 **Q: 如何只启动部分节点？**
-A: 使用 `<arg>` 和条件判断，或创建多个 launch 文件组合使用。
+A: 使用 `DeclareLaunchArgument` + 条件判断，或创建多个 launch 文件组合使用（`IncludeLaunchDescription`）。

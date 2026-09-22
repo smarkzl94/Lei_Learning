@@ -23,85 +23,16 @@
 
 ```bash
 # 查询服务列表
-rosservice list          # ROS1
-ros2 service list        # ROS2
+ros2 service list
 
 # 查看服务类型
-rosservice type /spawn   # turtlesim/Spawn
+ros2 service type /spawn   # turtlesim/srv/Spawn
 
 # 调用服务
-rosservice call /spawn 5 5 0.5 "turtle2"     # ROS1
-ros2 service call /spawn turtlesim/srv/Spawn "{x: 5, y: 5, theta: 0.5, name: 'turtle2'}"  # ROS2
+ros2 service call /spawn turtlesim/srv/Spawn "{x: 5, y: 5, theta: 0.5, name: 'turtle2'}"
 ```
 
-### 3. ROS1 C++ Service Server
-
-```cpp
-#include <ros/ros.h>
-#include <turtlesim/Spawn.h>
-
-// 回调函数，处理服务请求
-bool spawnCallback(turtlesim::Spawn::Request& req,
-                   turtlesim::Spawn::Response& res) {
-    ROS_INFO("Spawn request: x=%.2f, y=%.2f, name=%s",
-             req.x, req.y, req.name.c_str());
-    
-    res.name = req.name;
-    ROS_INFO("Spawned turtle: %s", res.name.c_str());
-    
-    return true;  // 服务调用成功
-}
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "spawn_server");
-    ros::NodeHandle nh;
-    
-    // 创建 Service Server
-    ros::ServiceServer server = nh.advertiseService("spawn_turtle", spawnCallback);
-    
-    ROS_INFO("Spawn server ready.");
-    ros::spin();
-    
-    return 0;
-}
-```
-
-### 4. ROS1 C++ Service Client
-
-```cpp
-#include <ros/ros.h>
-#include <turtlesim/Spawn.h>
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "spawn_client");
-    ros::NodeHandle nh;
-    
-    // 创建 Service Client
-    ros::ServiceClient client = nh.serviceClient<turtlesim::Spawn>("spawn_turtle");
-    
-    // 等待服务可用
-    ros::service::waitForService("spawn_turtle");
-    
-    // 创建请求
-    turtlesim::Spawn srv;
-    srv.request.x = 5.0;
-    srv.request.y = 5.0;
-    srv.request.theta = 0.0;
-    srv.request.name = "turtle2";
-    
-    // 调用服务
-    if (client.call(srv)) {
-        ROS_INFO("Success! Spawned: %s", srv.response.name.c_str());
-    } else {
-        ROS_ERROR("Failed to call service");
-        return 1;
-    }
-    
-    return 0;
-}
-```
-
-### 5. ROS2 C++ Service Server
+### 3. ROS2 C++ Service Server
 
 ```cpp
 #include <rclcpp/rclcpp.hpp>
@@ -138,7 +69,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-### 6. ROS2 C++ Service Client
+### 4. ROS2 C++ Service Client
 
 ```cpp
 #include <rclcpp/rclcpp.hpp>
@@ -215,7 +146,7 @@ ROS2 中尝试异步调用多个服务，并汇总结果。
 ## ❓ 常见问题
 
 **Q: Service 调用超时怎么办？**
-A: ROS1 中 `client.call()` 会阻塞直到返回；ROS2 中可设置超时时间，或用异步调用。
+A: `wait_for_service` 可设置等待超时；正式调用用 `async_send_request` + `spin_until_future_complete`，拿不到响应就按失败处理。
 
 **Q: 一个 Service 可以被多个 Client 同时调用吗？**
 A: Server 会排队处理请求，一次处理一个。如果需要并行，考虑用 Topic 或 Action。
