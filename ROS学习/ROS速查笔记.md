@@ -481,3 +481,70 @@ std_msgs/msg/String                 →  std_msgs::msg::String
 example_interfaces/srv/AddTwoInts   →  example_interfaces::srv::AddTwoInts
 my_package/srv/Xxx（自定义）         →  my_package::srv::Xxx
 ```
+
+
+---
+
+### Topic / Service / Action C++ 实现横向对比（三兄弟一张表）
+
+- **类型**：框架速记
+- **发现日期**：2026-09-23
+- **关联知识点**：ROS 03 章 核心通信机制（01 Topic + 02 Service + 03 Action 总复盘）
+
+**一句话区分**：Topic = 喊话（单向、发完就走）；Service = 打电话（双向同步、一问一答）；Action = 点外卖（下单 → 看配送进度 → 送达，可取消）。
+
+**总对比表**：
+
+| 维度 | Topic | Service | Action |
+|------|-------|---------|--------|
+| 通信语义 | 单向异步广播 | 双向同步请求/响应 | 长任务：Goal + 周期 Feedback + 最终 Result |
+| 能否取消 | ❌ | ❌ | ✅（协商式取消） |
+| 数据定义文件 | `.msg` | `.srv`（`---` 分 Req/Res 两段） | `.action`（`---` 分 Goal/Result/Feedback **三段**） |
+| 自动生成的类 | `包::msg::Xxx`（1 个） | `包::srv::Xxx`（Req、Res 2 个） | `包::action::Xxx`（Goal、Feedback、Result **3 个**） |
+| 额外头文件 | 无 | 无 | `rclcpp_action/rclcpp_action.hpp` |
+| 被动端创建 | `create_subscription`（单回调） | `create_service`（单回调） | `create_server`（**三回调**：Goal/Cancel/Accepted） |
+| 被动端占位符 | `_1` = 消息 | `_1` = 请求，`_2` = 响应 | `_1,_2` / `_1` / `_1`（按回调参数个数） |
+| 被动端干什么 | 收消息 | 填 response，**返回即送达** | 前台回调只派活，**execute 开后台线程干活** |
+| 主动端核心动作 | `pub_->publish(msg)` 完就走 | `async_send_request` → `future.get()` 等结果 | `async_send_goal` + 三个回调（response/feedback/result） |
+| 主动端等待方式 | 不等待 | `spin_until_future_complete` | 不阻塞，结果/进度自动回调 |
+| 句柄别名 | `Publisher<T>` / `Subscription<T>` | `Service<Srv>` | `action::Server<Action>` |
+| 适用场景 | 传感器数据、状态流 | 拍照、查询等 <1 秒短操作 | 导航、抓取等长任务 |
+
+**骨架差异只在中间**（main 四件套 + spin 三者完全相同）：
+
+```cpp
+class XxxNode : public rclcpp::Node {
+public:
+    XxxNode() : Node("xxx") {
+        // Topic：  建 1 个通信对象
+        // Service：建 1 个通信对象
+        // Action： 建 1 个 action_server_，但注册 3 个回调
+    }
+};
+```
+
+**回调数量对仗**（占位符规律统一：缺几个参数就几个 `_`）：
+
+| | 回调签名 | 占位符 |
+|---|---------|--------|
+| Topic Sub | `cb(SharedPtr msg)` | `_1` |
+| Service Server | `cb(SharedPtr req, SharedPtr res)` | `_1, _2` |
+| Action Server ① | `handleGoal(uuid, goal)` | `_1, _2` |
+| Action Server ② | `handleCancel(goal_handle)` | `_1` |
+| Action Server ③ | `handleAccepted(goal_handle)` | `_1`（然后 bind 开线程跑 execute，**参数已齐不用占位符**） |
+
+**Action 独有的三个记忆点**：
+
+1. **三段式 = 三个类**：`.action` 文件编译后生成 `MoveTo::Goal` / `MoveTo::Feedback` / `MoveTo::Result`
+2. **execute 必须在独立线程**：`handleAccepted` 里 `std::thread{...}.detach()`，回调线程只派活不干活，否则新的 Goal/Cancel 全堵死
+3. **取消靠轮询**：execute 循环里每轮查 `goal_handle->is_canceling()`；收尾三终态 `succeed` / `canceled` / `abort` 必有其一
+
+**选择决策**：
+
+```
+要进度反馈或可取消？──是──→ Action
+│否
+│  需要对方回应吗？──是──→ Service（且任务短）
+│否
+└─→ Topic
+```
