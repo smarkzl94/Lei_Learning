@@ -548,3 +548,32 @@ public:
 │否
 └─→ Topic
 ```
+
+
+---
+
+### 四大传感器消息速记表（06 章）
+
+- **类型**：速查表
+- **发现日期**：2026-09-29
+- **关联知识点**：ROS 06 章 01 传感器与消息类型
+
+**传感器 → 消息类型 → 配套工具**（一行一个，从左到右记）：
+
+| 传感器 | 消息类型 | 核心字段 / 配套工具 |
+|--------|----------|---------------------|
+| 激光雷达 | `sensor_msgs/LaserScan` | `ranges[]` 距离数组 + `angle_min` / `angle_increment` |
+| 摄像头 | `sensor_msgs/Image` | 配 `cv_bridge` 转 OpenCV Mat |
+| 里程计 | `nav_msgs/Odometry` | `pose.pose.position` 位置 + 四元数姿态 |
+| 点云 | `sensor_msgs/PointCloud2` | 配 PCL 库（降采样 / 地面分割） |
+
+**记忆钩子**（谐音 + 场景）：
+
+```
+激光雷达 → "扫"出来的 LaserScan，ranges 就是一排距离数字
+摄像头   → Image 最直白，cv_bridge 是 ROS↔OpenCV 的翻译
+里程计   → Odom...etry，机器人"自己估摸"的位置（会漂移）
+点云     → PointCloud，一群点 = 三维世界，点太多要 PCL 降采样
+```
+
+**配套认知**：传感器数据全是 Topic 消息，处理传感器 = 写订阅回调（03 章功夫）；避障闭环 = 订阅 `/scan` → 发 `cmd_vel`（pub/sub 对）。

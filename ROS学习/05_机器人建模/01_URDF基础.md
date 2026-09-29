@@ -94,27 +94,43 @@ URDF (Unified Robot Description Format) 是 XML 格式的机器人描述文件�
 <mesh filename="package://my_pkg/meshes/base.dae"/>
 ```
 
-### 5. 在 ROS 中加载 URDF
+### 5. 在 ROS2 中加载 URDF
 
-```xml
-<!-- launch 文件 -->
-<launch>
-  <!-- 加载 URDF 到参数服务器 -->
-  <param name="robot_description" 
-         command="$(find xacro)/xacro $(find my_pkg)/urdf/robot.urdf" />
-  
-  <!-- 发布 TF -->
-  <node pkg="robot_state_publisher" type="robot_state_publisher" 
-        name="robot_state_publisher" />
-  
-  <!-- 关节状态发布 -->
-  <node pkg="joint_state_publisher" type="joint_state_publisher" 
-        name="joint_state_publisher" />
-  
-  <!-- RViz -->
-  <node pkg="rviz" type="rviz" name="rviz" 
-        args="-d $(find my_pkg)/config/robot.rviz"/>
-</launch>
+```python
+# launch/display.launch.py
+import os
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.substitutions import Command
+
+def generate_launch_description():
+    urdf_file = os.path.join(
+        get_package_share_directory('my_pkg'), 'urdf', 'robot.urdf')
+
+    with open(urdf_file, 'r') as f:
+        robot_description = f.read()
+
+    return LaunchDescription([
+        # 发布 TF（根据 URDF 和关节状态推算各 link 的坐标变换）
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            parameters=[{'robot_description': robot_description}]
+        ),
+        # 关节状态发布（无真实机器人时拖滑块模拟关节运动）
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui'
+        ),
+        # RViz 查看模型
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            arguments=['-d', os.path.join(
+                get_package_share_directory('my_pkg'), 'config', 'robot.rviz')]
+        ),
+    ])
 ```
 
 ### 6. 检查 URDF
