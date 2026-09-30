@@ -190,7 +190,105 @@ y = x**2; y.backward(); print(x.grad)   # 2.0 ← 清零后恢复正常
 
 ---
 
+# 第三部分：nn.Module（第 03 章）
+
+## 核心概念
+
+- **层 = 保管参数的盒子**：`nn.Linear` 就是手写的 `x @ W + b` 的官方封装——参数自动创建、自动开录音，只管给形状
+- **nn.Module = 收纳箱**：`self.xxx = 层` 自动登记参数，喂 optimizer / 搬 GPU / 存盘都靠它
+- **激活函数 = 非线性调料**：没有它，叠多少层线性都等价于一层（面试高频）
+- **Dropout**：训练时按概率随机掐零神经元防过拟合；评估时自动关闭
+
+## 标准模板三条规则
+
+| 规则 | 原因 |
+|---|---|
+| `super().__init__()` 必须第一行写 | 不写参数全部丢失 |
+| 层在 `__init__` 定义 | 收纳箱只在初始化时扫描 self.xxx |
+| 计算流程写在 `forward` | 每次 `model(x)` 自动调用，**不要写 `model.forward(x)`** |
+
+## 用法速查表
+
+| 用法 | 用途 | 备注 |
+|---|---|---|
+| `nn.Linear(in, out)` | 全连接层 | 参数量 = in×out + out（面试口算用） |
+| `nn.ReLU()` | 激活函数（负数掐 0） | 夹在层之间 |
+| `nn.Dropout(p)` | 随机置零防过拟合 | 训练生效，eval 自动关 |
+| `nn.Sequential(...)` | 直线结构偷懒写法 | 有分支/跳跃必须手写 forward |
+| `nn.ModuleList([...])` | 层数不固定的层列表 | **普通 list 存层会丢参数！** |
+| `nn.Conv2d(in, out, k, stride, padding)` | 卷积 | out = (in+2p-k)/s + 1 |
+| `model.parameters()` | 所有参数的迭代器 | 直接喂给 optimizer |
+| `model.train()` / `model.eval()` | 切换训练/评估模式 | 验证前必须 eval() |
+| `model.to(device)` | 整个模型搬设备 | 数据也要 .to(device) |
+| `model.state_dict()` | 有序字典 {参数名: 值} | 只存权重不存结构 |
+| `model.apply(fn)` | 递归应用自定义初始化 | 特殊场景才用 |
+
+---
+
+# 第四部分：训练流程（第 04 章）
+
+## 核心概念
+
+- **损失函数 = 阅卷老师**：分类用 `CrossEntropyLoss`（输入 logits + long 标签，**内部已含 softmax，别再手动加**）
+- **优化器 = 拧参数的机械手**：默认 `AdamW(lr=1e-3)`；SGD+momentum 是老派 CNN 选择
+- **调度器 = 先大步后小步**：余弦退火 `CosineAnnealingLR` 最常用，每个 epoch 末尾 `scheduler.step()`
+- **学习率**：太小训不动，太大震荡——超参数之王
+
+## 优化器对比
+
+| 优化器 | 特点 | 场景 |
+|---|---|---|
+| SGD+momentum | 一视同仁，需调 lr，泛化好 | 传统 CNN 极限精度 |
+| Adam | 每个参数私人步长，对 lr 不敏感 | 省心默认 |
+| **AdamW** | 修正 weight decay 与自适应的耦合 | **新项目默认**，Transformer 标配 |
+
+## 回归损失三兄弟（2026-09-30 补充）
+
+| | 小误差 | 大误差 | 场景 |
+|---|---|---|---|
+| MSELoss（L2） | 平方，压小 | 爆炸放大 | 误差分布干净 |
+| L1Loss | 线性 | 线性 | 有离群点 |
+| **SmoothL1Loss** | 平方（像 MSE） | 绝对值（像 L1） | **检测框回归、DQN** |
+
+## 标准训练循环（骨架，背下来）
+
+```python
+for epoch in range(num_epochs):
+    model.train()
+    for data, target in train_loader:
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()          # 1. 清梯度
+        output = model(data)           # 2. 前向
+        loss = criterion(output, target)  # 3. 算损失
+        loss.backward()                # 4. 反传
+        optimizer.step()               # 5. 更新
+
+    model.eval()
+    with torch.no_grad():              # 验证：只做题不学习
+        correct = sum((model(d.to(device)).argmax(1) == t.to(device)).sum().item()
+                      for d, t in val_loader)
+    scheduler.step()
+```
+
+**训练 vs 验证对比**：
+
+| | 训练 | 验证 |
+|---|---|---|
+| 模式 | train() | eval() |
+| 录音 | 开 | 关（no_grad） |
+| 目的 | 更新参数 | 只评估 |
+
+## 常见坑
+
+1. 忘 `zero_grad()` → 梯度累积爆炸
+2. CrossEntropyLoss 前手动加 Softmax → 数值不稳
+3. 标签不是 long → dtype 报错
+4. 验证忘 eval()+no_grad → 指标虚低、显存爆炸
+5. 每个 epoch 存模型 → 只存 best
+
+---
+
 ## 待补充
 
-- [ ] nn.Module 与模型搭建（第 03 章）
-- [ ] Dataset 与 DataLoader（数据加载）
+- [ ] Dataset 与 DataLoader（数据加载，第 05 章）
+- [ ] 练习代码统一函数化封装（2026-09-30 已完成 practice01-04）
