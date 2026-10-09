@@ -288,7 +288,66 @@ for epoch in range(num_epochs):
 
 ---
 
+---
+
+# 第五部分：Dataset 与 DataLoader（第 05 章，2026-10-08）
+
+## 核心概念
+
+- **Dataset = 菜谱**：管"第 i 条数据是什么"（怎么读、怎么增强）
+- **DataLoader = 传菜员**：管批量取数、打乱、多进程、组 batch
+- **黄金法则**：`__init__` 只建索引，真正读数据放 `__getitem__`（懒加载，防 OOM）
+
+## 用法速查表
+
+| 用法 | 用途 | 备注 |
+|---|---|---|
+| `__len__` + `__getitem__` | 自定义 Dataset 的两个必备方法 | 返回 (数据, 标签) |
+| `DataLoader(ds, batch_size, shuffle)` | 组 batch | **训练 shuffle=True，验证 False** |
+| `drop_last=True` | 丢掉不足一批的尾巴 | BN 层讨厌 batch=1 |
+| `num_workers=4` | 多进程加载 | Windows 必须包 `if __name__=='__main__'`；调试先设 0 |
+| `random_split(ds, [160, 40], generator=...)` | 划分训练/验证 | 给 generator 固定种子可复现 |
+| `collate_fn` | 自定义组 batch | 变长序列用 `pad_sequence` 补 0 |
+| `datasets.MNIST/ImageFolder` | 内置数据集 | 需 torchvision（本机未装，用到再 pip install） |
+
+## mini-batch 训练 = 04 章五步 + 一层取数循环
+
+```python
+for epoch in range(epochs):
+    model.train()
+    for X, y in train_loader:      # ← 唯一新东西：一批一批喂
+        optimizer.zero_grad()
+        loss = criterion(model(X), y)
+        loss.backward()
+        optimizer.step()
+```
+
+**为什么分批**：全量算梯度太慢太占内存，mini-batch 是"抽样估计梯度"，又快又稳。
+
+## 练习复盘（practice05.py，5 个任务全过）
+
+- 任务 2：10 条 ÷ batch 4 = 3 批，亲眼看到最后一批只有 2 条；shuffle 后每轮顺序不同
+- 任务 3：mini-batch 训练 5 轮 loss 0.62→0.20，acc 98.5%
+- 任务 4：random_split 160/40，训练+验证完整骨架跑通，验证 acc 75%→95%
+- 任务 5：变长序列 pad 补 0 组 batch成功（不给 collate_fn 会报 stack 错）
+
 ## 待补充
 
-- [ ] Dataset 与 DataLoader（数据加载，第 05 章）
-- [ ] 练习代码统一函数化封装（2026-09-30 已完成 practice01-04）
+- [ ] 数据增强（第 06 章，需先装 torchvision）← 下一步
+- [x] ~~Dataset 与 DataLoader（第 05 章）~~（2026-10-08 完成）
+- [x] ~~练习代码统一函数化封装~~（2026-09-30 完成 practice01-04）
+
+## 训练流程练习复盘（2026-10-08）
+
+练习文件：`PyTorch学习/practice/practice04.py`（5 个任务全部完成并跑通）
+
+- **任务 3**：200 个二分类样本全量训练 50 轮，loss 0.29→0.16，acc 99.5%。五步循环已能默写。
+- **任务 4（学习率实验，重要结论）**：
+  - lr=0.001 → acc 卡在 46%，loss 几乎不降（走不到）
+  - lr=10 → 反而收敛更快（可分数据的交叉熵对大 lr 宽容，**不是 lr 大必炸**）
+  - 真正的爆炸要在二次损失上看：`(w*3-9)²`，lr=0.2 时 loss 36→243→1645→… 指数发散
+  - 稳定边界：二次损失 lr < 2/曲率，本题曲率 18，故 lr≈0.11 是生死线
+- **任务 5**：eval+no_grad / 去掉 no_grad / train() 三种写法在本模型上准确率相同（Linear 无模式差异）；
+  记住铁律的真实原因：Dropout/BN 在 train() 下行为随机会毁掉验证指标，no_grad 省显存提速。
+
+> ⚠️ 练习文件已从 `D:\DemoPy\practice\` 迁入工作区 `PyTorch学习\practice\`，后续练习都在这里写。

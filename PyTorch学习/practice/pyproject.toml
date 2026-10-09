@@ -1,0 +1,8 @@
+[project]
+name = "demopy"
+version = "0.1.0"
+description = "PyTorch practice exercises."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "zhanglei" }]
+dependencies = []
