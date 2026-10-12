@@ -1,0 +1,5 @@
+# 大文件与临时产物不进仓库
+PyTorch学习/practice/data/
+*.pth
+__pycache__/
+PyTorch学习/practice/pdf-qa*/
