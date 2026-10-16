@@ -6,7 +6,11 @@
   assets/agent_history.png      Agent 概念 60 年演变时间线
   assets/agent_stack.png        2026 Agent 生态分层地图
 """
+import sys
+
 import matplotlib.pyplot as plt
+
+sys.stdout.reconfigure(encoding="utf-8")
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]

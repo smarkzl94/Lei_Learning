@@ -7,7 +7,11 @@
   assets/langgraph_state.png     05 篇：LangGraph 状态图
   assets/multiagent_mcp.png      06 篇：多智能体协作 + MCP 架构
 """
+import sys
+
 import matplotlib.pyplot as plt
+
+sys.stdout.reconfigure(encoding="utf-8")
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
